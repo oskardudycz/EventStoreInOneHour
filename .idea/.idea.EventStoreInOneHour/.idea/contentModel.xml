@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ContentModelStore">
+    <e p="C:\Repos\EventStoreInOneHour" t="IncludeFlat">
+      <e p="EventStoreInOneHour" t="IncludeRecursive">
+        <e p="Aggregate.cs" t="Include" />
+        <e p="bin" t="ExcludeRecursive" />
+        <e p="EventStore.cs" t="Include" />
+        <e p="EventStoreInOneHour.csproj" t="IncludeRecursive" />
+        <e p="IAggregate.cs" t="Include" />
+        <e p="IEventStore.cs" t="Include" />
+        <e p="IProjection.cs" t="Include" />
+        <e p="IRepository.cs" t="Include" />
+        <e p="ISnapshot.cs" t="Include" />
+        <e p="obj" t="ExcludeRecursive">
+          <e p="Debug" t="Include">
+            <e p="netcoreapp3.1" t="Include">
+              <e p="EventStoreInOneHour.AssemblyInfo.cs" t="Include" />
+            </e>
+          </e>
+        </e>
+        <e p="Repository.cs" t="Include" />
+        <e p="SnapshotToTable.cs" t="Include" />
+        <e p="StreamState.cs" t="Include" />
+        <e p="Tools" t="Include">
+          <e p="ReflectionInvoker.cs" t="Include" />
+        </e>
+      </e>
+      <e p="EventStoreInOneHour.sln" t="IncludeFlat" />
+      <e p="EventStoreInOneHour.Tests" t="IncludeRecursive">
+        <e p="bin" t="ExcludeRecursive" />
+        <e p="EventStoreInOneHour.Tests.csproj" t="IncludeRecursive" />
+        <e p="Exercise01CreateStreamsTable.cs" t="Include" />
+        <e p="Exercise02CreateEventsTable.cs" t="Include" />
+        <e p="Exercise03CreateAppendEventFunction.cs" t="Include" />
+        <e p="Exercise04EventStoreMethods.cs" t="Include" />
+        <e p="Exercise05StreamAggregation.cs" t="Include" />
+        <e p="Exercise06TimeTraveling.cs" t="Include" />
+        <e p="Exercise07AggregateAndRepository.cs" t="Include" />
+        <e p="Exercise08Snapshots.cs" t="Include" />
+        <e p="Exercise09Projections.cs" t="Include" />
+        <e p="obj" t="ExcludeRecursive">
+          <e p="Debug" t="Include">
+            <e p="netcoreapp3.1" t="Include">
+              <e p="EventStoreInOneHour.Tests.AssemblyInfo.cs" t="Include" />
+            </e>
+          </e>
+        </e>
+        <e p="Tools" t="Include">
+          <e p="PostgresDbConnectionProvider.cs" t="Include" />
+          <e p="PostgresSchemaProvider.cs" t="Include" />
+          <e p="Settings.cs" t="Include" />
+        </e>
+      </e>
+      <e p="packages" t="ExcludeRecursive" />
+    </e>
+    <e p="C:\Users\oskar\.nuget\packages\microsoft.net.test.sdk\16.6.1\build\netcoreapp2.1" t="Include">
+      <e p="Microsoft.NET.Test.Sdk.Program.cs" t="Include" />
+    </e>
+    <e p="C:\Users\oskar\.nuget\packages\microsoft.testplatform.testhost\16.6.1\build\netcoreapp2.1\x64\testhost.dll" t="Include" />
+    <e p="C:\Users\oskar\.nuget\packages\microsoft.testplatform.testhost\16.6.1\build\netcoreapp2.1\x64\testhost.exe" t="Include" />
+    <e p="C:\Users\oskar\.nuget\packages\xunit.runner.visualstudio\2.4.1\build\netcoreapp1.0\xunit.runner.reporters.netcoreapp10.dll" t="Include" />
+    <e p="C:\Users\oskar\.nuget\packages\xunit.runner.visualstudio\2.4.1\build\netcoreapp1.0\xunit.runner.utility.netcoreapp10.dll" t="Include" />
+    <e p="C:\Users\oskar\.nuget\packages\xunit.runner.visualstudio\2.4.1\build\netcoreapp1.0\xunit.runner.visualstudio.dotnetcore.testadapter.dll" t="Include" />
+    <e p="C:\Users\oskar\.Rider2019.3\config\consoles\db" t="IncludeRecursive" />
+    <e p="C:\Users\oskar\.Rider2019.3\config\extensions" t="IncludeRecursive" />
+    <e p="C:\Users\oskar\.Rider2019.3\system\extResources" t="IncludeRecursive" />
+    <e p="C:\Users\oskar\.Rider2019.3\system\resharper-host\local\Transient\ReSharperHost\v193\SolutionCaches\_EventStoreInOneHour.-1383068358.00" t="ExcludeRecursive" />
+  </component>
+</project>
