@@ -9,58 +9,6 @@ namespace EventStoreInOneHour.Tests
 
     public class Exercise05StreamAggregation
     {
-        class User
-        {
-            public Guid Id { get; private set; }
-            public string Name { get; private set; }
-            public long Version { get; private set; }
-
-            public User(Guid id, string name)
-            {
-                Id = id;
-                Name = name;
-            }
-
-            // For deserialization
-            private User() { }
-
-            private void Apply(UserCreated @event)
-            {
-                Id = @event.UserId;
-                Name = @event.UserName;
-            }
-
-            private void Apply(UserNameUpdated @event)
-            {
-                Name = @event.UserName;
-            }
-        }
-
-        class UserCreated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserCreated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-
-        class UserNameUpdated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserNameUpdated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
         private readonly NpgsqlConnection databaseConnection;
         private readonly EventStore eventStore;
 
@@ -81,18 +29,38 @@ namespace EventStoreInOneHour.Tests
         [Fact]
         public void AggregateStream_ShouldReturnObjectWithStateBasedOnEvents()
         {
-            var streamId = Guid.NewGuid();
-            var userCreated = new UserCreated(streamId, "John Doe");
-            var userNameUpdated = new UserNameUpdated(streamId, "Adam Smith");
+            var bankAccountId = Guid.NewGuid();
+            var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
+            var clientId = Guid.NewGuid();
+            var currencyISOCOde = "PLN";
+            var createdAt = DateTime.UtcNow;
 
-            eventStore.AppendEvent<User>(streamId, userCreated);
-            eventStore.AppendEvent<User>(streamId, userNameUpdated);
+            var bankAccountCreated = new BankAccountCreated(
+                bankAccountId,
+                accountNumber,
+                clientId,
+                currencyISOCOde,
+                createdAt
+            );
 
-            var aggregate = eventStore.AggregateStream<User>(streamId);
+            var cashierId = Guid.NewGuid();
+            var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, DateTime.UtcNow);
 
-            aggregate.Id.Should().Be(streamId);
-            aggregate.Name.Should().Be(userNameUpdated.UserName);
-            aggregate.Version.Should().Be(2);
+            var atmId = Guid.NewGuid();
+            var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, DateTime.UtcNow);
+
+            eventStore.AppendEvent<BankAccount>(bankAccountId, bankAccountCreated);
+            eventStore.AppendEvent<BankAccount>(bankAccountId, depositRecorded);
+            eventStore.AppendEvent<BankAccount>(bankAccountId, cashWithdrawn);
+
+            var bankAccount = eventStore.AggregateStream<BankAccount>(bankAccountId);
+
+            bankAccount.Id.Should().Be(bankAccountId);
+            bankAccount.Version.Should().Be(3);
+            bankAccount.AccountNumber.Should().Be(accountNumber);
+            bankAccount.ClientId.Should().Be(clientId);
+            bankAccount.CurrencyISOCode.Should().Be(currencyISOCOde);
+            bankAccount.CreatedAt.Should().Be(createdAt);
         }
     }
 }

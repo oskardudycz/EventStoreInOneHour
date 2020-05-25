@@ -7,45 +7,10 @@ using Xunit;
 
 namespace EventStoreInOneHour.Tests
 {
-
     public class Exercise04EventStoreMethods
     {
-        class User
-        {
-            public Guid Id { get; set; }
-            public string Name { get; set; }
-        }
-
-        class UserCreated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserCreated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-
-        class UserNameUpdated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserNameUpdated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-        private readonly NpgsqlConnection databaseConnection;
-        private readonly EventStore eventStore;
-
         /// <summary>
-        /// Inits Event Store
+        ///     Inits Event Store
         /// </summary>
         public Exercise04EventStoreMethods()
         {
@@ -58,40 +23,79 @@ namespace EventStoreInOneHour.Tests
             eventStore.Init();
         }
 
-        [Fact]
-        public void GetStreamState_ShouldReturnProperStreamInfo()
-        {
-            var streamId = Guid.NewGuid();
-            var @event = new UserCreated(streamId,"John Doe");
-
-            eventStore.AppendEvent<User>(streamId, @event);
-
-            var streamState = eventStore.GetStreamState(streamId);
-
-            streamState.Id.Should().Be(streamId);
-            streamState.Type.Should().Be(typeof(User));
-            streamState.Version.Should().Be(1);
-        }
+        private readonly NpgsqlConnection databaseConnection;
+        private readonly EventStore eventStore;
 
         [Fact]
         public void GetEvents_ShouldReturnAppendedEvents()
         {
-            var streamId = Guid.NewGuid();
-            var userCreated = new UserCreated(streamId, "John Doe");
-            var userNameUpdated = new UserNameUpdated(streamId, "Adam Smith");
+            var now = DateTime.UtcNow;
 
-            eventStore.AppendEvent<User>(streamId, userCreated);
-            eventStore.AppendEvent<User>(streamId, userNameUpdated);
+            var bankAccountId = Guid.NewGuid();
+            var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
+            var clientId = Guid.NewGuid();
+            var currencyISOCOde = "PLN";
 
-            var events = eventStore.GetEvents(streamId);
+            var bankAccountCreated = new BankAccountCreated(
+                bankAccountId,
+                accountNumber,
+                clientId,
+                currencyISOCOde,
+                now
+            );
 
-            events.Should().HaveCount(2);
+            var cashierId = Guid.NewGuid();
+            var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, now);
 
-            events.OfType<UserCreated>().Should().Contain(
-                e => e.UserId == userCreated.UserId && e.UserName == userCreated.UserName);
+            var atmId = Guid.NewGuid();
+            var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, now);
 
-            events.OfType<UserNameUpdated>().Should().Contain(
-                e => e.UserId == userNameUpdated.UserId && e.UserName == userNameUpdated.UserName);
+            eventStore.AppendEvent<BankAccount>(bankAccountId, bankAccountCreated);
+            eventStore.AppendEvent<BankAccount>(bankAccountId, depositRecorded);
+            eventStore.AppendEvent<BankAccount>(bankAccountId, cashWithdrawn);
+
+            var events = eventStore.GetEvents(bankAccountId);
+
+            events.Should().HaveCount(3);
+
+            events.OfType<BankAccountCreated>().Should().Contain(
+                e => e.BankAccountId == bankAccountId && e.AccountNumber == accountNumber
+                                                      && e.ClientId == clientId && e.CurrencyISOCode == currencyISOCOde
+                                                      && e.CreatedAt == now);
+
+            events.OfType<BankAccountCreated>().Should().Contain(
+                e => e.BankAccountId == bankAccountId && e.AccountNumber == accountNumber
+                                                      && e.ClientId == clientId && e.CurrencyISOCode == currencyISOCOde
+                                                      && e.CreatedAt == now);
+
+            events.OfType<BankAccountCreated>().Should().Contain(
+                e => e.BankAccountId == bankAccountId && e.AccountNumber == accountNumber
+                                                      && e.ClientId == clientId && e.CurrencyISOCode == currencyISOCOde
+                                                      && e.CreatedAt == now);
+        }
+
+        [Fact]
+        public void GetStreamState_ShouldReturnProperStreamInfo()
+        {
+            var bankAccountId = Guid.NewGuid();
+            var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
+            var clientId = Guid.NewGuid();
+            var currencyISOCOde = "PLN";
+
+            var bankAccountCreated = new BankAccountCreated(
+                bankAccountId,
+                accountNumber,
+                clientId,
+                currencyISOCOde,
+                DateTime.Now
+            );
+            eventStore.AppendEvent<BankAccount>(bankAccountId, bankAccountCreated);
+
+            var streamState = eventStore.GetStreamState(bankAccountId);
+
+            streamState.Id.Should().Be(bankAccountId);
+            streamState.Type.Should().Be(typeof(BankAccount));
+            streamState.Version.Should().Be(1);
         }
     }
 }

@@ -12,163 +12,34 @@ namespace EventStoreInOneHour.Tests
 {
     public class Exercise09Projections
     {
-        class User : Aggregate
-        {
-            public string Name { get; private set; }
 
-            // added only for dapper deserialization needs
-            private User() {}
-
-            public User(Guid id, string name)
-            {
-                var @event = new UserCreated(id, name);
-
-                Enqueue(@event);
-                Apply(@event);
-            }
-
-            public void ChangeName(string name)
-            {
-                var @event = new UserNameUpdated(Id, name);
-
-                Enqueue(@event);
-                Apply(@event);
-            }
-
-            private void Apply(UserCreated @event)
-            {
-                Id = @event.UserId;
-                Name = @event.UserName;
-            }
-
-            private void Apply(UserNameUpdated @event)
-            {
-                Name = @event.UserName;
-            }
-        }
-
-        class UserCreated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserCreated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-
-        class UserNameUpdated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserNameUpdated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-        class Order : Aggregate
-        {
-            public string Number { get; private set; }
-
-            public decimal Amount { get; private set; }
-
-            // added only for dapper deserialization needs
-            private Order() {}
-
-            public Order(Guid id, Guid userId, string number, decimal price)
-            {
-                var @event = new OrderCreated(id, userId, number, price);
-
-                Enqueue(@event);
-                Apply(@event);
-            }
-
-            private void Apply(OrderCreated @event)
-            {
-                Id = @event.OrderId;
-                Number = @event.Number;
-                Amount = @event.Amount;
-            }
-        }
-
-        public class OrderCreated
-        {
-            public Guid OrderId { get; }
-            public Guid UserId { get; }
-            public string Number { get; }
-            public decimal Amount { get; }
-
-            public OrderCreated(Guid orderId, Guid userId, string number, decimal amount)
-            {
-                OrderId = orderId;
-                UserId = userId;
-                Number = number;
-                Amount = amount;
-            }
-        }
-
-        public class UserDashboard
-        {
-
-            public Guid Id { get; }
-            public string UserName { get; }
-            public int OrdersCount { get; }
-            public decimal TotalAmount { get; }
-
-            public UserDashboard(Guid id, string userName, int ordersCount, decimal totalAmount)
-            {
-                Id = id;
-                UserName = userName;
-                OrdersCount = ordersCount;
-                TotalAmount = totalAmount;
-            }
-        }
-
-        public class UserDashboardProjection : Projection
+        public class CashierDashboardProjection : Projection
         {
             private readonly NpgsqlConnection databaseConnection;
 
-            public UserDashboardProjection(NpgsqlConnection databaseConnection)
+            public CashierDashboardProjection(NpgsqlConnection databaseConnection)
             {
                 this.databaseConnection = databaseConnection;
 
-                Projects<UserCreated>(Apply);
-                Projects<UserNameUpdated>(Apply);
-                Projects<OrderCreated>(Apply);
+                Projects<CashierCreated>(Apply);
+                Projects<DepositRecorded>(Apply);
             }
 
-            void Apply(UserCreated @event)
+            void Apply(CashierCreated @event)
             {
                 databaseConnection.Execute(
-                    @"INSERT INTO UserDashboards (Id, UserName, OrdersCount, TotalAmount)
-                    VALUES (@UserId, @UserName, 0, 0)",
+                    @"INSERT INTO CashierDashboards (Id, CashierName, RecordedDepositsCount, TotalBalance)
+                    VALUES (@CashierId, @Name, 0, 0)",
                     @event
                  );
             }
 
-            void Apply(UserNameUpdated @event)
+            void Apply(DepositRecorded @event)
             {
                 databaseConnection.Execute(
-                    @"UPDATE UserDashboards
-                    SET UserName = @UserName
-                    WHERE Id = @UserId",
-                    @event
-                );
-            }
-
-            void Apply(OrderCreated @event)
-            {
-                databaseConnection.Execute(
-                    @"UPDATE UserDashboards
-                    SET OrdersCount = OrdersCount + 1,
-                        TotalAmount = TotalAmount + @Amount
-                    WHERE Id = @UserId",
+                    @"UPDATE CashierDashboards
+                    SET TotalBalance = TotalBalance + @Amount, RecordedDepositsCount = RecordedDepositsCount + 1
+                    WHERE Id = @CashierId",
                     @event
                 );
             }
@@ -179,24 +50,24 @@ namespace EventStoreInOneHour.Tests
         {
             protected override void Up()
             {
-                Execute(@"CREATE TABLE UserDashboards (
-                      Id            UUID                      NOT NULL    PRIMARY KEY,
-                      UserName      TEXT                      NOT NULL,
-                      OrdersCount   integer                   NOT NULL,
-                      TotalAmount   decimal                   NOT NULL
+                Execute(@"CREATE TABLE CashierDashboards (
+                      Id             UUID                      NOT NULL    PRIMARY KEY,
+                      CashierName     TEXT                      NOT NULL,
+                      RecordedDepositsCount  integer                   NOT NULL,
+                      TotalBalance   decimal                   NOT NULL
                   );");
             }
 
             protected override void Down()
             {
-                Execute("DROP TABLE UserDashboards");
+                Execute("DROP TABLE CashierDashboards");
             }
         }
 
         private readonly NpgsqlConnection databaseConnection;
         private readonly EventStore eventStore;
-        private readonly IRepository<User> userRepository;
-        private readonly IRepository<Order> orderRepository;
+        private readonly IRepository<Cashier> clientRepository;
+        private readonly IRepository<BankAccount> bankAccountRepository;
 
         /// <summary>
         /// Inits Event Store
@@ -216,39 +87,71 @@ namespace EventStoreInOneHour.Tests
             // Create Event Store
             eventStore = new EventStore(databaseConnection);
 
-            eventStore.AddProjection(new UserDashboardProjection(databaseConnection));
+            eventStore.AddProjection(new CashierDashboardProjection(databaseConnection));
 
             // Initialize Event Store
             eventStore.Init();
 
-            userRepository = new Repository<User>(eventStore);
-            orderRepository = new Repository<Order>(eventStore);
+            clientRepository = new Repository<Cashier>(eventStore);
+            bankAccountRepository = new Repository<BankAccount>(eventStore);
         }
 
         [Fact]
         public void AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
         {
-            var user = new User(Guid.NewGuid(), "John Doe");
+            var cashier1 = Cashier.Create(Guid.NewGuid(), "John Doe");
+            var cashier2 = Cashier.Create(Guid.NewGuid(), "Emily Rose");
+            clientRepository.Add(cashier1);
+            clientRepository.Add(cashier2);
 
-            userRepository.Add(user);
+            var bankAccountId = Guid.NewGuid();
+            var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
+            var currencyISOCOde = "PLN";
 
-            var firstOrder = new Order(Guid.NewGuid(), user.Id, "ORD/2019/08/01", 100.13M);
-            var secondOrder = new Order(Guid.NewGuid(), user.Id, "ORD/2019/08/01", 2.110M);
+            var bankAccount = BankAccount.Open(
+                bankAccountId,
+                accountNumber,
+                Guid.NewGuid(),
+                currencyISOCOde
+            );
+            bankAccountRepository.Add(bankAccount);
 
-            orderRepository.Add(firstOrder);
-            orderRepository.Add(secondOrder);
+            bankAccount.RecordDeposit(100, cashier1.Id);
+            bankAccountRepository.Update(bankAccount);
 
-            user.ChangeName("Alan Smith");
+            bankAccount.RecordDeposit(10, cashier2.Id);
+            bankAccountRepository.Update(bankAccount);
 
-            userRepository.Update(user);
+            var otherBankAccountId = Guid.NewGuid();
+            var otherAccountNumber = "PL61 1090 1014 0000 0712 1981 3000";
 
-            var userDashboard = databaseConnection.Get<UserDashboard>(user.Id);
+            var otherAccount = BankAccount.Open(
+                otherBankAccountId,
+                otherAccountNumber,
+                Guid.NewGuid(),
+                "PLN"
+            );
+            bankAccountRepository.Add(bankAccount);
 
-            userDashboard.Should().NotBeNull();
-            userDashboard.Id.Should().Be(user.Id);
-            userDashboard.UserName.Should().Be(user.Name);
-            userDashboard.OrdersCount.Should().Be(2);
-            userDashboard.TotalAmount.Should().Be(firstOrder.Amount + secondOrder.Amount);
+            otherAccount.RecordDeposit(13, cashier1.Id);
+            bankAccountRepository.Update(otherAccount);
+
+            var cashier1Dashboard = databaseConnection.Get<CashierDashboard>(cashier1.Id);
+
+            cashier1Dashboard.Should().NotBeNull();
+            cashier1Dashboard.Id.Should().Be(cashier1.Id);
+            cashier1Dashboard.CashierName.Should().Be(cashier1.Name);
+            cashier1Dashboard.RecordedDepositsCount.Should().Be(2);
+            cashier1Dashboard.TotalBalance.Should().Be(113);
+
+
+            var cashier2Dashboard = databaseConnection.Get<CashierDashboard>(cashier2.Id);
+
+            cashier2Dashboard.Should().NotBeNull();
+            cashier2Dashboard.Id.Should().Be(cashier2.Id);
+            cashier2Dashboard.CashierName.Should().Be(cashier2.Name);
+            cashier2Dashboard.RecordedDepositsCount.Should().Be(1);
+            cashier2Dashboard.TotalBalance.Should().Be(10);
         }
     }
 }

@@ -28,10 +28,13 @@
       </e>
       <e p="EventStoreInOneHour.sln" t="IncludeFlat" />
       <e p="EventStoreInOneHour.Tests" t="IncludeRecursive">
+        <e p="BankAccount.cs" t="Include" />
         <e p="bin" t="ExcludeRecursive" />
+        <e p="Cashier.cs" t="Include" />
+        <e p="CashierDashboard.cs" t="Include" />
         <e p="EventStoreInOneHour.Tests.csproj" t="IncludeRecursive" />
-        <e p="Exercise01CreateStreamsTable.cs" t="Include" />
-        <e p="Exercise02CreateEventsTable.cs" t="Include" />
+        <e p="Exercise01CreateEventsTable.cs" t="Include" />
+        <e p="Exercise02CreateStreamsTable.cs" t="Include" />
         <e p="Exercise03CreateAppendEventFunction.cs" t="Include" />
         <e p="Exercise04EventStoreMethods.cs" t="Include" />
         <e p="Exercise05StreamAggregation.cs" t="Include" />

@@ -6,41 +6,7 @@ using Xunit;
 
 namespace EventStoreInOneHour.Tests
 {
-    /// <summary>
-    /// Exercise 01 - Create Streams Table
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Stream represents ordered set of events. Simply speaking stream is an log of the events that happened for the
-    /// specific aggregate/entity.
-    /// </para>
-    ///
-    /// <para>
-    /// As truth is in the log, so in the events - stream can be also interpreted as the grouping, where key is stream id.
-    /// </para>
-    ///
-    /// <para>
-    /// <c>Id</c> needs to be unique, so normally is represented by Guid type.
-    /// </para>
-    ///
-    /// <para>
-    /// It's also common to add two other columns:
-    /// </para>
-    /// <list type="bullet">
-    /// <item>
-    ///     <term><c>Type</c></term>
-    ///     <description>information about the stream type. It' mostly used to make debugging easier or some optimizations.</description>
-    /// </item>
-    /// <item>
-    ///     <term><c>Version</c></term>
-    ///     <description>auto-incremented value used mostly for optimistic concurrency check</description>
-    /// </item>
-    /// </list>
-    /// <para>
-    /// Class provides set of tests verifying if <see cref="EventStore.Init()"/> method initializes <c>Streams</c> table properly.
-    /// </para>
-    /// </remarks>
-    public class Exercise01CreateStreamsTable : IDisposable
+    public class Exercise02CreateStreamsTable : IDisposable
     {
         private readonly NpgsqlConnection databaseConnection;
         private readonly PostgresSchemaProvider schemaProvider;
@@ -54,7 +20,7 @@ namespace EventStoreInOneHour.Tests
         /// <summary>
         /// Inits Event Store
         /// </summary>
-        public Exercise01CreateStreamsTable()
+        public Exercise02CreateStreamsTable()
         {
             databaseConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
             schemaProvider = new PostgresSchemaProvider(databaseConnection);

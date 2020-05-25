@@ -9,21 +9,6 @@ namespace EventStoreInOneHour.Tests
 {
     public class Exercise03CreateAppendEventFunction
     {
-        class User
-        {
-            public string Name { get; set; }
-        }
-
-
-        class UserCreated
-        {
-            public string Name { get; }
-
-            public UserCreated(string name)
-            {
-                Name = name;
-            }
-        }
         private readonly NpgsqlConnection databaseConnection;
         private readonly PostgresSchemaProvider schemaProvider;
         private readonly EventStore eventStore;
@@ -58,20 +43,30 @@ namespace EventStoreInOneHour.Tests
         [Fact]
         public void AppendEventFunction_WhenStreamDoesNotExist_CreateNewStream_And_AppendNewEvent()
         {
-            var streamId = Guid.NewGuid();
-            var @event = new UserCreated("John Doe");
+            var bankAccountId = Guid.NewGuid();
+            var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
+            var clientId = Guid.NewGuid();
+            var currencyISOCOde = "PLN";
 
-            var result = eventStore.AppendEvent<User>(streamId, @event);
+            var @event = new BankAccountCreated(
+                bankAccountId,
+                accountNumber,
+                clientId,
+                currencyISOCOde,
+                DateTime.Now
+            );
+
+            var result = eventStore.AppendEvent<BankAccount>(bankAccountId, @event);
 
             result.Should().BeTrue();
 
             var wasStreamCreated = databaseConnection.QuerySingle<bool>(
-                "select exists (select 1 from streams where id = @streamId)", new {streamId}
+                "select exists (select 1 from streams where id = @streamId)", new { streamId = bankAccountId}
             );
             wasStreamCreated.Should().BeTrue();
 
             var wasEventAppended = databaseConnection.QuerySingle<bool>(
-                "select exists (select 1 from events where stream_id = @streamId)", new {streamId}
+                "select exists (select 1 from events where stream_id = @streamId)", new {streamId = bankAccountId}
             );
             wasEventAppended.Should().BeTrue();
         }

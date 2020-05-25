@@ -1,4 +1,5 @@
 using System;
+using Baseline;
 using EventStoreInOneHour.Tests.Tools;
 using FluentAssertions;
 using Npgsql;
@@ -8,73 +9,8 @@ namespace EventStoreInOneHour.Tests
 {
     public class Exercise07AggregateAndRepository
     {
-
-        class User : Aggregate
-        {
-            public string Name { get; private set; }
-
-            public User(Guid id, string name)
-            {
-                var @event = new UserCreated(id, name);
-
-                Enqueue(@event);
-                Apply(@event);
-            }
-
-            // For serialization
-            private User() { }
-
-            public void ChangeName(string name)
-            {
-                var @event = new UserNameUpdated(Id, name);
-
-                Enqueue(@event);
-                Apply(@event);
-            }
-
-            private void Apply(UserCreated @event)
-            {
-                Id = @event.UserId;
-                Name = @event.UserName;
-            }
-
-            private void Apply(UserNameUpdated @event)
-            {
-                Name = @event.UserName;
-            }
-        }
-
-        class UserCreated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserCreated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-
-        class UserNameUpdated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserNameUpdated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-        private readonly NpgsqlConnection databaseConnection;
-        private readonly EventStore eventStore;
-        private readonly IRepository<User> repository;
-
         /// <summary>
-        /// Inits Event Store
+        ///     Inits Event Store
         /// </summary>
         public Exercise07AggregateAndRepository()
         {
@@ -86,32 +22,53 @@ namespace EventStoreInOneHour.Tests
             // Initialize Event Store
             eventStore.Init();
 
-            repository = new Repository<User>(eventStore);
+            repository = new Repository<BankAccount>(eventStore);
         }
+
+        private readonly NpgsqlConnection databaseConnection;
+        private readonly EventStore eventStore;
+        private readonly IRepository<BankAccount> repository;
 
         [Fact]
         public void Repository_FullFlow_ShouldSucceed()
         {
-            var streamId = Guid.NewGuid();
-            var user = new User(streamId, "John Doe");
+            var timeBeforeCreate = DateTime.UtcNow;
+            var bankAccountId = Guid.NewGuid();
+            var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
+            var clientId = Guid.NewGuid();
+            var currencyISOCOde = "PLN";
 
-            repository.Add(user);
+            var bankAccount = BankAccount.Open(
+                bankAccountId,
+                accountNumber,
+                clientId,
+                currencyISOCOde
+            );
 
-            var userFromRepository = repository.Find(streamId);
+            repository.Add(bankAccount);
 
-            userFromRepository.Id.Should().Be(streamId);
-            userFromRepository.Name.Should().Be("John Doe");
-            userFromRepository.Version.Should().Be(1);
+            var bankAccountFromRepository = repository.Find(bankAccountId);
 
-            userFromRepository.ChangeName("Adam Smith");
+            bankAccountFromRepository.Id.Should().Be(bankAccountId);
+            bankAccountFromRepository.Version.Should().Be(1);
+            bankAccountFromRepository.AccountNumber.Should().Be(accountNumber);
+            bankAccountFromRepository.ClientId.Should().Be(clientId);
+            bankAccountFromRepository.CurrencyISOCode.Should().Be(currencyISOCOde);
+            bankAccountFromRepository.CreatedAt.Should().BeAfter(timeBeforeCreate);
+            bankAccountFromRepository.Balance.Should().Be(0);
 
-            repository.Update(userFromRepository);
+            var cashierId = Guid.NewGuid();
+            var depositAmount = 100;
 
-            var userAfterUpdate = repository.Find(streamId);
+            bankAccountFromRepository.RecordDeposit(depositAmount, cashierId);
 
-            userAfterUpdate.Id.Should().Be(streamId);
-            userAfterUpdate.Name.Should().Be("Adam Smith");
-            userFromRepository.Version.Should().Be(2);
+            repository.Update(bankAccountFromRepository);
+
+            var bankAccountAfterDeposit = repository.Find(bankAccountId);
+
+            bankAccountAfterDeposit.Id.Should().Be(bankAccountId);
+            bankAccountAfterDeposit.Balance.Should().Be(depositAmount);
+            bankAccountFromRepository.Version.Should().Be(2);
         }
     }
 }

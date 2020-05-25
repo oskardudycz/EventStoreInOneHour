@@ -14,87 +14,31 @@ namespace EventStoreInOneHour.Tests
 {
     public class Exercise08Snapshots
     {
-        class User : Aggregate
-        {
-            public string Name { get; private set; }
-
-            // added only for dapper deserialization needs
-            private User() {}
-
-            public User(Guid id, string name)
-            {
-                var @event = new UserCreated(id, name);
-
-                Enqueue(@event);
-                Apply(@event);
-            }
-
-            public void ChangeName(string name)
-            {
-                var @event = new UserNameUpdated(Id, name);
-
-                Enqueue(@event);
-                Apply(@event);
-            }
-
-            private void Apply(UserCreated @event)
-            {
-                Id = @event.UserId;
-                Name = @event.UserName;
-            }
-
-            private void Apply(UserNameUpdated @event)
-            {
-                Name = @event.UserName;
-            }
-        }
-
-        class UserCreated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserCreated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
-
-        class UserNameUpdated
-        {
-            public Guid UserId { get; }
-            public string UserName { get; }
-
-            public UserNameUpdated(Guid userId, string userName)
-            {
-                UserId = userId;
-                UserName = userName;
-            }
-        }
-
         [Migration(1, "Create Users table")]
         public class CreateUsers : Migration
         {
             protected override void Up()
             {
-                Execute(@"CREATE TABLE users (
-                      id             UUID                      NOT NULL    PRIMARY KEY,
-                      name           TEXT                      NOT NULL,
-                      version        BIGINT                    NOT NULL
+                Execute(@"CREATE TABLE bankaccounts (
+                      id              UUID                      NOT NULL    PRIMARY KEY,
+                      accountNumber   TEXT                      NOT NULL,
+                      clientId        UUID                      NOT NULL,
+                      currencyISOCode TEXT                      NOT NULL,
+                      balance         DECIMAL                   NOT NULL,
+                      createdAt       timestamp                 NOT NULL,
+                      version         BIGINT                    NOT NULL
                   );");
             }
 
             protected override void Down()
             {
-                Execute("DROP TABLE users");
+                Execute("DROP TABLE bankaccounts");
             }
         }
 
         private readonly NpgsqlConnection databaseConnection;
         private readonly EventStore eventStore;
-        private readonly IRepository<User> repository;
+        private readonly IRepository<BankAccount> repository;
 
         /// <summary>
         /// Inits Event Store
@@ -114,44 +58,60 @@ namespace EventStoreInOneHour.Tests
             // Create Event Store
             eventStore = new EventStore(databaseConnection);
 
-            var userSnapshot = new SnapshotToTable<User>(
+            var userSnapshot = new SnapshotToTable<BankAccount>(
                 databaseConnection,
-                @"INSERT INTO users (id, name, version) VALUES (@Id, @Name, @Version)
+                @"INSERT INTO bankaccounts (id, accountNumber, clientId, currencyISOCode, balance, createdAt, version) VALUES (@Id, @AccountNumber, @ClientId, @CurrencyISOCode, @Balance, @CreatedAt, @Version)
                  ON CONFLICT (id)
-                 DO UPDATE SET name = @Name, version = @Version");
+                 DO UPDATE SET Balance = @Balance, version = @Version");
 
             eventStore.AddSnapshot(userSnapshot);
 
             // Initialize Event Store
             eventStore.Init();
 
-            repository = new Repository<User>(eventStore);
+            repository = new Repository<BankAccount>(eventStore);
         }
 
         [Fact]
         public void AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
         {
-            var streamId = Guid.NewGuid();
-            var user = new User(streamId, "John Doe");
+            var timeBeforeCreate = DateTime.UtcNow;
+            var bankAccountId = Guid.NewGuid();
+            var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
+            var clientId = Guid.NewGuid();
+            var currencyISOCOde = "PLN";
 
-            repository.Add(user);
+            var bankAccount = BankAccount.Open(
+                bankAccountId,
+                accountNumber,
+                clientId,
+                currencyISOCOde
+            );
 
-            var userFromDb = databaseConnection.Get<User>(streamId);
+            repository.Add(bankAccount);
 
-            userFromDb.Should().NotBeNull();
-            userFromDb.Id.Should().Be(streamId);
-            userFromDb.Name.Should().Be("John Doe");
-            userFromDb.Version.Should().Be(1);
+            var snapshot = databaseConnection.Get<BankAccount>(bankAccountId);
 
-            userFromDb.ChangeName("Adam Smith");
+            snapshot.Id.Should().Be(bankAccountId);
+            snapshot.Version.Should().Be(1);
+            snapshot.AccountNumber.Should().Be(accountNumber);
+            snapshot.ClientId.Should().Be(clientId);
+            snapshot.CurrencyISOCode.Should().Be(currencyISOCOde);
+            snapshot.CreatedAt.Should().BeAfter(timeBeforeCreate);
+            snapshot.Balance.Should().Be(0);
 
-            repository.Update(userFromDb);
+            var cashierId = Guid.NewGuid();
+            var depositAmount = 100;
 
-            var userAfterUpdate = databaseConnection.Get<User>(streamId);
+            snapshot.RecordDeposit(depositAmount, cashierId);
 
-            userAfterUpdate.Id.Should().Be(streamId);
-            userAfterUpdate.Name.Should().Be("Adam Smith");
-            userFromDb.Version.Should().Be(2);
+            repository.Update(snapshot);
+
+            var snapshotAfterUpdate = databaseConnection.Get<BankAccount>(bankAccountId);
+
+            snapshotAfterUpdate.Id.Should().Be(bankAccountId);
+            snapshotAfterUpdate.Balance.Should().Be(depositAmount);
+            snapshotAfterUpdate.Version.Should().Be(2);
         }
 
 
@@ -159,34 +119,48 @@ namespace EventStoreInOneHour.Tests
         [Fact]
         public void Snapshots_ShouldBeQueryable()
         {
-            const string john = "John";
+            var firstMatchingBankAccount = BankAccount.Open(
+                Guid.NewGuid(),
+                Guid.NewGuid().ToString(),
+                Guid.NewGuid(),
+                "PLN"
+            );
+            var secondMatchingAccount = BankAccount.Open(
+                Guid.NewGuid(),
+                Guid.NewGuid().ToString(),
+                Guid.NewGuid(),
+                "USD"
+            );
+            var thirdMatchingAccount = BankAccount.Open(
+                Guid.NewGuid(),
+                Guid.NewGuid().ToString(),
+                Guid.NewGuid(),
+                "EUR"
+            );
 
-            var firstMatchingUser = new User(Guid.NewGuid(), $"{john} Doe");
-            var secondMatchingUser = new User(Guid.NewGuid(), $"{john} Smith");
-            var notMatchingUser = new User(Guid.NewGuid(), "Anna Smith");
-
-            repository.Add(firstMatchingUser);
-            repository.Add(secondMatchingUser);
-            repository.Add(notMatchingUser);
+            repository.Add(firstMatchingBankAccount);
+            repository.Add(secondMatchingAccount);
+            repository.Add(thirdMatchingAccount);
 
 
-            var users = databaseConnection.Query<User>(
-                    @"SELECT id, name, version
-                    FROM USERS
-                    WHERE name LIKE '%" + john + "%'" );
+            var bankAccounts = databaseConnection.Query<BankAccount>(
+                    @"SELECT id, accountNumber, clientId, currencyISOCode, balance, createdAt, version
+                    FROM bankaccounts");
 
-            users.Count().Should().Be(2);
+            bankAccounts.Count().Should().Be(3);
 
-            Expression<Func<User, bool>> userEqualTo(User userToCompare)
+            Expression<Func<BankAccount, bool>> bankAccountEqualsTo(BankAccount bankAccountToCompare)
             {
-                return x => x.Id == userToCompare.Id
-                            && x.Name == userToCompare.Name
-                            && x.Version == userToCompare.Version;
+                return  e => e.Id == bankAccountToCompare.Id
+                             && e.AccountNumber == bankAccountToCompare.AccountNumber
+                             && e.ClientId == bankAccountToCompare.ClientId
+                             && e.CurrencyISOCode == bankAccountToCompare.CurrencyISOCode
+                             && e.Balance == bankAccountToCompare.Balance;
             }
 
-            users.Should().Contain(userEqualTo(firstMatchingUser));
-            users.Should().Contain(userEqualTo(secondMatchingUser));
-            users.Should().NotContain(userEqualTo(notMatchingUser));
+            bankAccounts.Should().Contain(bankAccountEqualsTo(firstMatchingBankAccount));
+            bankAccounts.Should().Contain(bankAccountEqualsTo(secondMatchingAccount));
+            bankAccounts.Should().Contain(bankAccountEqualsTo(thirdMatchingAccount));
         }
     }
 }
