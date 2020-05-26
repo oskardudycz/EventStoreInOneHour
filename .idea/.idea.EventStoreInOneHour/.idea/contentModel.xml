@@ -3,15 +3,8 @@
   <component name="ContentModelStore">
     <e p="C:\Repos\EventStoreInOneHour" t="IncludeFlat">
       <e p="EventStoreInOneHour" t="IncludeRecursive">
-        <e p="Aggregate.cs" t="Include" />
         <e p="bin" t="ExcludeRecursive" />
-        <e p="EventStore.cs" t="Include" />
         <e p="EventStoreInOneHour.csproj" t="IncludeRecursive" />
-        <e p="IAggregate.cs" t="Include" />
-        <e p="IEventStore.cs" t="Include" />
-        <e p="IProjection.cs" t="Include" />
-        <e p="IRepository.cs" t="Include" />
-        <e p="ISnapshot.cs" t="Include" />
         <e p="obj" t="ExcludeRecursive">
           <e p="Debug" t="Include">
             <e p="netcoreapp3.1" t="Include">
@@ -19,19 +12,13 @@
             </e>
           </e>
         </e>
-        <e p="Repository.cs" t="Include" />
-        <e p="SnapshotToTable.cs" t="Include" />
-        <e p="StreamState.cs" t="Include" />
         <e p="Tools" t="Include">
           <e p="ReflectionInvoker.cs" t="Include" />
         </e>
       </e>
       <e p="EventStoreInOneHour.sln" t="IncludeFlat" />
       <e p="EventStoreInOneHour.Tests" t="IncludeRecursive">
-        <e p="BankAccount.cs" t="Include" />
         <e p="bin" t="ExcludeRecursive" />
-        <e p="Cashier.cs" t="Include" />
-        <e p="CashierDashboard.cs" t="Include" />
         <e p="EventStoreInOneHour.Tests.csproj" t="IncludeRecursive" />
         <e p="Exercise01CreateEventsTable.cs" t="Include" />
         <e p="Exercise02CreateStreamsTable.cs" t="Include" />
