@@ -13,4 +13,4 @@ Go to the main repository [Event Sourcing .NET Workshop](https://github.com/oska
 
 ## Should I build my own Event Store?
 
-You can, but I recommend using some ready battle-tested ready and maintained like [Marten](martendb.io/)
+You can, but I recommend using some ready battle-tested ready and maintained like [Marten](martendb.io/).
