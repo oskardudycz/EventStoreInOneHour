@@ -5,7 +5,7 @@ Repository for Live Stream "Event Store in One Hour"
 
 Master branch shows already finished Event Store. 
 
-To start with the fresh state checkout the [starting_point](https://github.com/oskardudycz/EventStoreInOneHour/tree/starting_point) branch. When code is created then you need to sequentially uncomment tests.
+To start with the fresh state checkout the [starting_point](https://github.com/oskardudycz/EventStoreInOneHour/tree/starting_point) branch. While adding code you need to sequentially uncomment tests to verify if all is working fine.
 
 ## How to built the Event Store on your own?
 
