@@ -12,8 +12,7 @@ namespace EventStoreInOneHour.Tests;
 
 public class Exercise09Projections
 {
-
-    public class CashierDashboardProjection : Projection
+    public class CashierDashboardProjection: Projection
     {
         private readonly NpgsqlConnection databaseConnection;
 
@@ -46,7 +45,7 @@ public class Exercise09Projections
     }
 
     [Migration(2, "Create Users dashboard table")]
-    public class CreateUsersDashboard : Migration
+    public class CreateUsersDashboard: Migration
     {
         protected override void Up()
         {
@@ -66,8 +65,6 @@ public class Exercise09Projections
 
     private readonly NpgsqlConnection databaseConnection;
     private readonly EventStore eventStore;
-    private readonly IRepository<Cashier> clientRepository;
-    private readonly IRepository<BankAccount> bankAccountRepository;
 
     /// <summary>
     /// Inits Event Store
@@ -77,7 +74,7 @@ public class Exercise09Projections
         databaseConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
 
         var databaseProvider =
-            new PostgresqlDatabaseProvider(databaseConnection) {SchemaName = typeof(Exercise09Projections).Name};
+            new PostgresqlDatabaseProvider(databaseConnection) { SchemaName = typeof(Exercise09Projections).Name };
 
         var migrationsAssembly = typeof(Exercise09Projections).Assembly;
         var migrator = new SimpleMigrator(migrationsAssembly, databaseProvider);
@@ -87,67 +84,83 @@ public class Exercise09Projections
         // Create Event Store
         eventStore = new EventStore(databaseConnection);
 
-        eventStore.AddProjection(new CashierDashboardProjection(databaseConnection));
+        eventStore.RegisterProjection(new CashierDashboardProjection(databaseConnection));
 
         // Initialize Event Store
         eventStore.Init();
-
-        clientRepository = new Repository<Cashier>(eventStore);
-        bankAccountRepository = new Repository<BankAccount>(eventStore);
     }
 
     [Fact]
     public async Task AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
     {
-        var cashier1 = Cashier.Create(Guid.NewGuid(), "John Doe");
-        var cashier2 = Cashier.Create(Guid.NewGuid(), "Emily Rose");
-        await clientRepository.AddAsync(cashier1);
-        await clientRepository.AddAsync(cashier2);
+        var cashier1 = new CashierCreated(Guid.NewGuid(), "John Doe");
+        var cashier2 = new CashierCreated(Guid.NewGuid(), "Emily Rose");
+        await eventStore.AppendEventsAsync<Cashier>(cashier1.CashierId, new[] { cashier1 });
+        await eventStore.AppendEventsAsync<Cashier>(cashier2.CashierId, new[] { cashier2 });
 
         var bankAccountId = Guid.NewGuid();
         var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
         var currencyISOCOde = "PLN";
 
-        var bankAccount = BankAccount.Open(
+        await eventStore.Handle(
             bankAccountId,
-            accountNumber,
-            Guid.NewGuid(),
-            currencyISOCOde
+            new OpenBankAccount(
+                bankAccountId,
+                accountNumber,
+                Guid.NewGuid(),
+                currencyISOCOde
+            )
         );
-        await bankAccountRepository.AddAsync(bankAccount);
 
-        bankAccount.RecordDeposit(100, cashier1.Id);
-        await bankAccountRepository.UpdateAsync(bankAccount);
+        await eventStore.Handle(
+            bankAccountId,
+            new RecordDeposit(
+                100,
+                cashier1.CashierId
+            )
+        );
 
-        bankAccount.RecordDeposit(10, cashier2.Id);
-        await bankAccountRepository.UpdateAsync(bankAccount);
+        await eventStore.Handle(
+            bankAccountId,
+            new RecordDeposit(
+                10,
+                cashier2.CashierId
+            )
+        );
 
         var otherBankAccountId = Guid.NewGuid();
         var otherAccountNumber = "PL61 1090 1014 0000 0712 1981 3000";
 
-        var otherAccount = BankAccount.Open(
-            otherBankAccountId,
-            otherAccountNumber,
-            Guid.NewGuid(),
-            "PLN"
+        await eventStore.Handle(
+            bankAccountId,
+            new OpenBankAccount(
+                otherBankAccountId,
+                otherAccountNumber,
+                Guid.NewGuid(),
+                "PLN"
+            )
         );
-        await bankAccountRepository.AddAsync(bankAccount);
 
-        otherAccount.RecordDeposit(13, cashier1.Id);
-        await bankAccountRepository.UpdateAsync(otherAccount);
+        await eventStore.Handle(
+            bankAccountId,
+            new RecordDeposit(
+                13,
+                cashier1.CashierId
+            )
+        );
 
-        var cashier1Dashboard = databaseConnection.Get<CashierDashboard>(cashier1.Id);
+        var cashier1Dashboard = databaseConnection.Get<CashierDashboard>(cashier1.CashierId);
 
         cashier1Dashboard.Should().NotBeNull();
-        cashier1Dashboard.Id.Should().Be(cashier1.Id);
+        cashier1Dashboard.Id.Should().Be(cashier1.CashierId);
         cashier1Dashboard.CashierName.Should().Be(cashier1.Name);
         cashier1Dashboard.RecordedDepositsCount.Should().Be(2);
         cashier1Dashboard.TotalBalance.Should().Be(113);
 
-        var cashier2Dashboard = databaseConnection.Get<CashierDashboard>(cashier2.Id);
+        var cashier2Dashboard = databaseConnection.Get<CashierDashboard>(cashier2.CashierId);
 
         cashier2Dashboard.Should().NotBeNull();
-        cashier2Dashboard.Id.Should().Be(cashier2.Id);
+        cashier2Dashboard.Id.Should().Be(cashier2.CashierId);
         cashier2Dashboard.CashierName.Should().Be(cashier2.Name);
         cashier2Dashboard.RecordedDepositsCount.Should().Be(1);
         cashier2Dashboard.TotalBalance.Should().Be(10);

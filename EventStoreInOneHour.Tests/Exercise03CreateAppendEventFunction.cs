@@ -48,12 +48,13 @@ public class Exercise03CreateAppendEventFunction
         var clientId = Guid.NewGuid();
         var currencyISOCOde = "PLN";
 
-        var @event = new BankAccountCreated(
+        var @event = new BankAccountOpened(
             bankAccountId,
             accountNumber,
             clientId,
             currencyISOCOde,
-            DateTime.Now
+            DateTime.Now,
+            1
         );
 
         await eventStore.AppendEventsAsync<BankAccount>(bankAccountId, new object[] { @event });

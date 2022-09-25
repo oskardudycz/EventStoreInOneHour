@@ -33,30 +33,31 @@ public class Exercise05StreamAggregation
         var clientId = Guid.NewGuid();
         var currencyISOCOde = "PLN";
         var createdAt = DateTime.UtcNow;
+        var version = 1;
 
-        var bankAccountCreated = new BankAccountCreated(
+        var bankAccountCreated = new BankAccountOpened(
             bankAccountId,
             accountNumber,
             clientId,
             currencyISOCOde,
-            createdAt
+            createdAt,
+            version
         );
 
         var cashierId = Guid.NewGuid();
-        var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, DateTime.UtcNow);
+        var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, DateTime.UtcNow, ++version);
 
         var atmId = Guid.NewGuid();
-        var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, DateTime.UtcNow);
+        var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, DateTime.UtcNow, ++version);
 
         await eventStore.AppendEventsAsync<BankAccount>(
             bankAccountId,
             new object[] { bankAccountCreated, depositRecorded, cashWithdrawn }
         );
 
-        var bankAccount = await eventStore.AggregateStreamAsync<BankAccount>(BankAccount.Evolve, bankAccountId);
+        var bankAccount = await eventStore.GetBankAccount(bankAccountId);
 
-        bankAccount.Should().NotBeNull();
-        bankAccount!.Id.Should().Be(bankAccountId);
+        bankAccount.Id.Should().Be(bankAccountId);
         bankAccount.Version.Should().Be(3);
         bankAccount.AccountNumber.Should().Be(accountNumber);
         bankAccount.ClientId.Should().Be(clientId);

@@ -1,6 +1,6 @@
-using System.Collections;
 using System.Data;
 using Dapper;
+using EventStoreInOneHour.Tools;
 using Newtonsoft.Json;
 using Npgsql;
 
@@ -25,55 +25,34 @@ public class EventStore: IDisposable, IEventStore
         CreateAppendEventFunction();
     }
 
-    public void AddProjection(IProjection projection)
-    {
-        projections.Add(projection);
-    }
-
-    public void ApplyProjections(object @event)
-    {
-        foreach (var projection in projections.Where(
-                     projection => projection.Handles.Contains(@event.GetType())))
-        {
-            projection.Handle(@event);
-        }
-    }
-
-    public async Task AppendEventsAsync<TStream>(Guid streamId, IEnumerable<object> events, long? expectedVersion = null, CancellationToken ct = default)
+    public Task AppendEventsAsync<TStream>(Guid streamId, IEnumerable<object> events, long? expectedVersion = null,
+        CancellationToken ct = default)
         where TStream : notnull
     {
-        if (databaseConnection.State == ConnectionState.Closed)
-            await databaseConnection.OpenAsync(ct);
-
-        await using var transaction = await databaseConnection.BeginTransactionAsync(ct);
-
-        try
-        {
-            foreach (var @event in events)
+        return databaseConnection.InTransaction(
+            async () =>
             {
-                databaseConnection.QuerySingle<bool>(
-                    "SELECT append_event(@Id, @Data::jsonb, @Type, @StreamId, @StreamType, @ExpectedVersion)",
-                    new
-                    {
-                        Id = Guid.NewGuid(),
-                        Data = JsonConvert.SerializeObject(@event),
-                        Type = @event.GetType().AssemblyQualifiedName,
-                        StreamId = streamId,
-                        StreamType = typeof(TStream).AssemblyQualifiedName,
-                        ExpectedVersion = expectedVersion
-                    },
-                    commandType: CommandType.Text
-                );
-                expectedVersion++;
-                ApplyProjections(@event);
-            }
+                foreach (var @event in events)
+                {
+                    await databaseConnection.QuerySingleAsync<bool>(
+                        "SELECT append_event(@Id, @Data::jsonb, @Type, @StreamId, @StreamType, @ExpectedVersion)",
+                        new
+                        {
+                            Id = Guid.NewGuid(),
+                            Data = JsonConvert.SerializeObject(@event),
+                            Type = @event.GetType().AssemblyQualifiedName,
+                            StreamId = streamId,
+                            StreamType = typeof(TStream).AssemblyQualifiedName,
+                            ExpectedVersion = expectedVersion
+                        },
+                        commandType: CommandType.Text
+                    );
+                    expectedVersion++;
 
-            await transaction.CommitAsync(ct);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(ct);
-        }
+                    ApplyProjections(@event);
+                }
+            },
+            ct);
     }
 
     public StreamState? GetStreamState(Guid streamId)
@@ -94,7 +73,8 @@ public class EventStore: IDisposable, IEventStore
             .SingleOrDefault();
     }
 
-    public async Task<IEnumerable> GetEventsAsync(Guid streamId, long? atStreamVersion = null, DateTime? atTimestamp = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<object>> GetEventsAsync(Guid streamId, long? atStreamVersion = null,
+        DateTime? atTimestamp = null, CancellationToken ct = default)
     {
         var atStreamCondition = atStreamVersion != null ? "AND version <= @atStreamVersion" : string.Empty;
         var atTimestampCondition = atTimestamp != null ? "AND created <= @atTimestamp" : string.Empty;
@@ -116,6 +96,20 @@ public class EventStore: IDisposable, IEventStore
                     Type.GetType(@event.type)
                 ))
             .ToList();
+    }
+
+    public void RegisterProjection(IProjection projection)
+    {
+        projections.Add(projection);
+    }
+
+    private void ApplyProjections(object @event)
+    {
+        foreach (var projection in projections.Where(
+                     projection => projection.Handles.Contains(@event.GetType())))
+        {
+            projection.Handle(@event);
+        }
     }
 
     private void CreateStreamsTable()

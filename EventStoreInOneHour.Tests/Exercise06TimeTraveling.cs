@@ -33,27 +33,29 @@ public class Exercise06TimeTravelling
         var clientId = Guid.NewGuid();
         var currencyISOCOde = "PLN";
         var createdAt = DateTime.UtcNow;
+        var version = 1;
 
-        var bankAccountCreated = new BankAccountCreated(
+        var bankAccountCreated = new BankAccountOpened(
             bankAccountId,
             accountNumber,
             clientId,
             currencyISOCOde,
-            createdAt
+            createdAt,
+            version
         );
 
         var cashierId = Guid.NewGuid();
-        var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, DateTime.UtcNow);
+        var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, DateTime.UtcNow, ++version);
 
         var atmId = Guid.NewGuid();
-        var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, DateTime.UtcNow);
+        var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, DateTime.UtcNow, ++version);
 
         await eventStore.AppendEventsAsync<BankAccount>(
             bankAccountId,
             new object[] { bankAccountCreated, depositRecorded, cashWithdrawn }
         );
 
-        var aggregateAtVersion1 = await eventStore.AggregateStreamAsync<BankAccount>(BankAccount.Evolve, bankAccountId, 1);
+        var aggregateAtVersion1 = await eventStore.GetBankAccount(bankAccountId, 1);
 
         aggregateAtVersion1.Should().NotBeNull();
         aggregateAtVersion1!.Id.Should().Be(bankAccountId);
@@ -61,7 +63,7 @@ public class Exercise06TimeTravelling
         aggregateAtVersion1.Version.Should().Be(1);
 
 
-        var aggregateAtVersion2 = await eventStore.AggregateStreamAsync<BankAccount>(BankAccount.Evolve, bankAccountId, 2);
+        var aggregateAtVersion2 = await eventStore.GetBankAccount(bankAccountId, 2);
 
         aggregateAtVersion2.Should().NotBeNull();
         aggregateAtVersion2!.Id.Should().Be(bankAccountId);
@@ -69,7 +71,7 @@ public class Exercise06TimeTravelling
         aggregateAtVersion2.Version.Should().Be(2);
 
 
-        var aggregateAtVersion3 = await eventStore.AggregateStreamAsync<BankAccount>(BankAccount.Evolve, bankAccountId, 3);
+        var aggregateAtVersion3 = await eventStore.GetBankAccount(bankAccountId, 3);
 
         aggregateAtVersion3.Should().NotBeNull();
         aggregateAtVersion3!.Id.Should().Be(bankAccountId);
