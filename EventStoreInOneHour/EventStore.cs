@@ -8,33 +8,34 @@ namespace EventStoreInOneHour;
 
 public class EventStore: IDisposable, IEventStore
 {
-    private readonly NpgsqlConnection databaseConnection;
+    private readonly NpgsqlConnection dbConnection;
 
-    private readonly IList<IProjection> projections = new List<IProjection>();
+    private readonly Dictionary<Type, List<IProjection>> projections = new();
 
-    public EventStore(NpgsqlConnection databaseConnection)
+    public EventStore(NpgsqlConnection dbConnection)
     {
-        this.databaseConnection = databaseConnection;
+        this.dbConnection = dbConnection;
     }
 
     public void Init()
     {
-        // See more in Greg Young's "Building an Event Storage" article https://cqrs.wordpress.com/documents/building-event-storage/
         CreateStreamsTable();
         CreateEventsTable();
         CreateAppendEventFunction();
+        InitProjections();
     }
 
-    public Task AppendEventsAsync<TStream>(Guid streamId, IEnumerable<object> events, long? expectedVersion = null,
-        CancellationToken ct = default)
-        where TStream : notnull
-    {
-        return databaseConnection.InTransaction(
-            async () =>
+    public Task AppendEventsAsync<TStream>(
+        Guid streamId,
+        IEnumerable<object> events,
+        long? expectedVersion = null,
+        CancellationToken ct = default
+    ) where TStream : notnull =>
+        dbConnection.InTransaction(async () =>
             {
                 foreach (var @event in events)
                 {
-                    await databaseConnection.QuerySingleAsync<bool>(
+                    var succeeded = await dbConnection.QuerySingleAsync<bool>(
                         "SELECT append_event(@Id, @Data::jsonb, @Type, @StreamId, @StreamType, @ExpectedVersion)",
                         new
                         {
@@ -43,35 +44,20 @@ public class EventStore: IDisposable, IEventStore
                             Type = @event.GetType().AssemblyQualifiedName,
                             StreamId = streamId,
                             StreamType = typeof(TStream).AssemblyQualifiedName,
-                            ExpectedVersion = expectedVersion
+                            ExpectedVersion = expectedVersion++
                         },
                         commandType: CommandType.Text
                     );
-                    expectedVersion++;
 
-                    ApplyProjections(@event);
+                    if (!succeeded)
+                        throw new InvalidOperationException("Expected version did not match the stream version!");
+
+                    await ApplyProjections(@event, ct);
                 }
             },
-            ct);
-    }
+            ct
+        );
 
-    public StreamState? GetStreamState(Guid streamId)
-    {
-        const string getStreamSql =
-            @"SELECT id, type, version
-                  FROM streams
-                  WHERE id = @streamId";
-
-        return databaseConnection
-            .Query<dynamic>(getStreamSql, new { streamId })
-            .Select(streamData =>
-                new StreamState(
-                    streamData.id,
-                    Type.GetType(streamData.type),
-                    streamData.version
-                ))
-            .SingleOrDefault();
-    }
 
     public async Task<IReadOnlyList<object>> GetEventsAsync(Guid streamId, long? atStreamVersion = null,
         DateTime? atTimestamp = null, CancellationToken ct = default)
@@ -87,7 +73,7 @@ public class EventStore: IDisposable, IEventStore
                   {atTimestampCondition}
                   ORDER BY version";
 
-        var events = await databaseConnection
+        var events = await dbConnection
             .QueryAsync<dynamic>(getStreamSql, new { streamId, atStreamVersion, atTimestamp });
 
         return events.Select(@event =>
@@ -100,15 +86,31 @@ public class EventStore: IDisposable, IEventStore
 
     public void RegisterProjection(IProjection projection)
     {
-        projections.Add(projection);
+        foreach (var eventType in projection.Handles)
+        {
+            if (!projections.ContainsKey(eventType))
+                projections[eventType] = new List<IProjection>();
+
+            projections[eventType].Add(projection);
+        }
     }
 
-    private void ApplyProjections(object @event)
+    private void InitProjections()
     {
-        foreach (var projection in projections.Where(
-                     projection => projection.Handles.Contains(@event.GetType())))
+        foreach (var projection in projections.Values.SelectMany(p => p))
         {
-            projection.Handle(@event);
+            projection.Init();
+        }
+    }
+
+    private async Task ApplyProjections(object @event, CancellationToken ct)
+    {
+        if (!projections.ContainsKey(@event.GetType()))
+            return;
+
+        foreach (var projection in projections[@event.GetType()])
+        {
+            await projection.Handle(@event, ct);
         }
     }
 
@@ -120,7 +122,7 @@ public class EventStore: IDisposable, IEventStore
                       type           TEXT                      NOT NULL,
                       version        BIGINT                    NOT NULL
                   );";
-        databaseConnection.Execute(creatStreamsTableSql);
+        dbConnection.Execute(creatStreamsTableSql);
     }
 
     private void CreateEventsTable()
@@ -136,7 +138,7 @@ public class EventStore: IDisposable, IEventStore
                       FOREIGN KEY(stream_id) REFERENCES streams(id),
                       CONSTRAINT events_stream_and_version UNIQUE(stream_id, version)
                 );";
-        databaseConnection.Execute(creatEventsTableSql);
+        dbConnection.Execute(creatEventsTableSql);
     }
 
     private void CreateAppendEventFunction()
@@ -188,11 +190,11 @@ public class EventStore: IDisposable, IEventStore
                     RETURN TRUE;
                 END;
                 $$;";
-        databaseConnection.Execute(appendEventFunctionSql);
+        dbConnection.Execute(appendEventFunctionSql);
     }
 
     public void Dispose()
     {
-        databaseConnection.Dispose();
+        dbConnection.Dispose();
     }
 }

@@ -9,7 +9,7 @@ namespace EventStoreInOneHour.Tests;
 
 public class Exercise03CreateAppendEventFunction
 {
-    private readonly NpgsqlConnection databaseConnection;
+    private readonly NpgsqlConnection dbConnection;
     private readonly PostgresSchemaProvider schemaProvider;
     private readonly EventStore eventStore;
 
@@ -21,11 +21,11 @@ public class Exercise03CreateAppendEventFunction
     /// </summary>
     public Exercise03CreateAppendEventFunction()
     {
-        databaseConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
-        schemaProvider = new PostgresSchemaProvider(databaseConnection);
+        dbConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
+        schemaProvider = new PostgresSchemaProvider(dbConnection);
 
         // Create Event Store
-        eventStore = new EventStore(databaseConnection);
+        eventStore = new EventStore(dbConnection);
 
         // Initialize Event Store
         eventStore.Init();
@@ -59,12 +59,12 @@ public class Exercise03CreateAppendEventFunction
 
         await eventStore.AppendEventsAsync<BankAccount>(bankAccountId, new object[] { @event });
 
-        var wasStreamCreated = databaseConnection.QuerySingle<bool>(
+        var wasStreamCreated = dbConnection.QuerySingle<bool>(
             "select exists (select 1 from streams where id = @streamId)", new { streamId = bankAccountId }
         );
         wasStreamCreated.Should().BeTrue();
 
-        var wasEventAppended = databaseConnection.QuerySingle<bool>(
+        var wasEventAppended = dbConnection.QuerySingle<bool>(
             "select exists (select 1 from events where stream_id = @streamId)", new { streamId = bankAccountId }
         );
         wasEventAppended.Should().BeTrue();

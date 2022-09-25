@@ -25,6 +25,7 @@ public static class TransactionWrapper
         catch
         {
             await transaction.RollbackAsync(ct);
+            throw;
         }
     }
 }

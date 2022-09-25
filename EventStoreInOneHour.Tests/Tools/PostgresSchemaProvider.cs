@@ -8,7 +8,7 @@ namespace EventStoreInOneHour.Tests.Tools;
 /// </summary>
 public class PostgresSchemaProvider
 {
-    private readonly NpgsqlConnection databaseConnection;
+    private readonly NpgsqlConnection dbConnection;
 
     const string GetTableColumnsSql =
         @"SELECT column_name AS name, data_type AS type
@@ -21,9 +21,9 @@ public class PostgresSchemaProvider
     private const string FunctionExistsSql =
         @"select exists(select * from pg_proc where proname = @functionName);";
 
-    public PostgresSchemaProvider(NpgsqlConnection databaseConnection)
+    public PostgresSchemaProvider(NpgsqlConnection dbConnection)
     {
-        this.databaseConnection = databaseConnection;
+        this.dbConnection = dbConnection;
     }
 
     /// <summary>
@@ -33,7 +33,7 @@ public class PostgresSchemaProvider
     /// <returns></returns>
     public Table? GetTable(string tableName)
     {
-        var columns =  databaseConnection.Query<Column>(GetTableColumnsSql, new { tableName }).ToList();
+        var columns =  dbConnection.Query<Column>(GetTableColumnsSql, new { tableName }).ToList();
 
         return columns.Any() ? new Table(tableName, columns) : null;
     }
@@ -45,7 +45,7 @@ public class PostgresSchemaProvider
     /// <returns></returns>
     public bool FunctionExists(string functionName)
     {
-        return databaseConnection.QuerySingle<bool>(FunctionExistsSql, new {functionName});
+        return dbConnection.QuerySingle<bool>(FunctionExistsSql, new {functionName});
     }
 }
 

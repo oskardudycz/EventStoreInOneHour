@@ -7,7 +7,7 @@ namespace EventStoreInOneHour.Tests;
 
 public class Exercise01CreateStreamsTable: IDisposable
 {
-    private readonly NpgsqlConnection databaseConnection;
+    private readonly NpgsqlConnection dbConnection;
     private readonly PostgresSchemaProvider schemaProvider;
 
     private const string StreamsTableName = "streams";
@@ -21,11 +21,11 @@ public class Exercise01CreateStreamsTable: IDisposable
     /// </summary>
     public Exercise01CreateStreamsTable()
     {
-        databaseConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
-        schemaProvider = new PostgresSchemaProvider(databaseConnection);
+        dbConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
+        schemaProvider = new PostgresSchemaProvider(dbConnection);
 
         // Create Event Store
-        var eventStore = new EventStore(databaseConnection);
+        var eventStore = new EventStore(dbConnection);
 
         // Initialize Event Store
         eventStore.Init();
@@ -93,6 +93,6 @@ public class Exercise01CreateStreamsTable: IDisposable
     /// </summary>
     public void Dispose()
     {
-        databaseConnection.Dispose();
+        dbConnection.Dispose();
     }
 }
