@@ -9,4 +9,6 @@ public interface IRepository<T> where T : IAggregate
     void Update(T aggregate);
 
     void Delete(T aggregate);
+
+    void AddSnapshot(ISnapshot snapshot);
 }
