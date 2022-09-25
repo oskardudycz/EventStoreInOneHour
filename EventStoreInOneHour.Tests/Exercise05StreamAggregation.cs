@@ -26,7 +26,7 @@ public class Exercise05StreamAggregation
     }
 
     [Fact]
-    public void AggregateStream_ShouldReturnObjectWithStateBasedOnEvents()
+    public async Task AggregateStream_ShouldReturnObjectWithStateBasedOnEvents()
     {
         var bankAccountId = Guid.NewGuid();
         var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
@@ -48,11 +48,12 @@ public class Exercise05StreamAggregation
         var atmId = Guid.NewGuid();
         var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, DateTime.UtcNow);
 
-        eventStore.AppendEvent<BankAccount>(bankAccountId, bankAccountCreated);
-        eventStore.AppendEvent<BankAccount>(bankAccountId, depositRecorded);
-        eventStore.AppendEvent<BankAccount>(bankAccountId, cashWithdrawn);
+        await eventStore.AppendEventsAsync<BankAccount>(
+            bankAccountId,
+            new object[] { bankAccountCreated, depositRecorded, cashWithdrawn }
+        );
 
-        var bankAccount = eventStore.AggregateStream<BankAccount>(BankAccount.Evolve, bankAccountId);
+        var bankAccount = await eventStore.AggregateStreamAsync<BankAccount>(BankAccount.Evolve, bankAccountId);
 
         bankAccount.Should().NotBeNull();
         bankAccount!.Id.Should().Be(bankAccountId);

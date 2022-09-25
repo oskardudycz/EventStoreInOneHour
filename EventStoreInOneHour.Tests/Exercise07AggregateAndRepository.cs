@@ -29,7 +29,7 @@ public class Exercise07AggregateAndRepository
     private readonly IRepository<BankAccount> repository;
 
     [Fact]
-    public void Repository_FullFlow_ShouldSucceed()
+    public async Task Repository_FullFlow_ShouldSucceed()
     {
         var timeBeforeCreate = DateTime.UtcNow;
         var bankAccountId = Guid.NewGuid();
@@ -44,9 +44,9 @@ public class Exercise07AggregateAndRepository
             currencyISOCOde
         );
 
-        repository.Add(bankAccount);
+        await repository.AddAsync(bankAccount);
 
-        var bankAccountFromRepository = repository.Find(bankAccountId);
+        var bankAccountFromRepository = await repository.FindAsync(bankAccountId);
 
         bankAccountFromRepository.Should().NotBeNull();
         bankAccountFromRepository!.Id.Should().Be(bankAccountId);
@@ -62,9 +62,9 @@ public class Exercise07AggregateAndRepository
 
         bankAccountFromRepository.RecordDeposit(depositAmount, cashierId);
 
-        repository.Update(bankAccountFromRepository);
+        await repository.UpdateAsync(bankAccountFromRepository);
 
-        var bankAccountAfterDeposit = repository.Find(bankAccountId);
+        var bankAccountAfterDeposit = await repository.FindAsync(bankAccountId);
 
         bankAccountAfterDeposit.Should().NotBeNull();
         bankAccountAfterDeposit!.Id.Should().Be(bankAccountId);

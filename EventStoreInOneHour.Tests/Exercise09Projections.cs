@@ -97,12 +97,12 @@ public class Exercise09Projections
     }
 
     [Fact]
-    public void AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
+    public async Task AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
     {
         var cashier1 = Cashier.Create(Guid.NewGuid(), "John Doe");
         var cashier2 = Cashier.Create(Guid.NewGuid(), "Emily Rose");
-        clientRepository.Add(cashier1);
-        clientRepository.Add(cashier2);
+        await clientRepository.AddAsync(cashier1);
+        await clientRepository.AddAsync(cashier2);
 
         var bankAccountId = Guid.NewGuid();
         var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
@@ -114,13 +114,13 @@ public class Exercise09Projections
             Guid.NewGuid(),
             currencyISOCOde
         );
-        bankAccountRepository.Add(bankAccount);
+        await bankAccountRepository.AddAsync(bankAccount);
 
         bankAccount.RecordDeposit(100, cashier1.Id);
-        bankAccountRepository.Update(bankAccount);
+        await bankAccountRepository.UpdateAsync(bankAccount);
 
         bankAccount.RecordDeposit(10, cashier2.Id);
-        bankAccountRepository.Update(bankAccount);
+        await bankAccountRepository.UpdateAsync(bankAccount);
 
         var otherBankAccountId = Guid.NewGuid();
         var otherAccountNumber = "PL61 1090 1014 0000 0712 1981 3000";
@@ -131,10 +131,10 @@ public class Exercise09Projections
             Guid.NewGuid(),
             "PLN"
         );
-        bankAccountRepository.Add(bankAccount);
+        await bankAccountRepository.AddAsync(bankAccount);
 
         otherAccount.RecordDeposit(13, cashier1.Id);
-        bankAccountRepository.Update(otherAccount);
+        await bankAccountRepository.UpdateAsync(otherAccount);
 
         var cashier1Dashboard = databaseConnection.Get<CashierDashboard>(cashier1.Id);
 
@@ -143,7 +143,6 @@ public class Exercise09Projections
         cashier1Dashboard.CashierName.Should().Be(cashier1.Name);
         cashier1Dashboard.RecordedDepositsCount.Should().Be(2);
         cashier1Dashboard.TotalBalance.Should().Be(113);
-
 
         var cashier2Dashboard = databaseConnection.Get<CashierDashboard>(cashier2.Id);
 

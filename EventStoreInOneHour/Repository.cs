@@ -5,51 +5,34 @@ public class Repository<T>: IRepository<T> where T : IAggregate
     private readonly IEventStore eventStore;
     private readonly IList<ISnapshot> snapshots = new List<ISnapshot>();
 
-    public Repository(IEventStore eventStore)
-    {
+    public Repository(IEventStore eventStore) =>
         this.eventStore = eventStore ?? throw new ArgumentNullException(nameof(eventStore));
-    }
 
-    public T? Find(Guid id)
-    {
-        return eventStore.AggregateStream<T>(id);
-    }
+    public Task<T?> FindAsync(Guid id, CancellationToken ct = default) =>
+        eventStore.AggregateStreamAsync<T>(id, ct: ct);
 
-    public void Add(T aggregate)
-    {
-        Store(aggregate);
-    }
+    public Task AddAsync(T aggregate, CancellationToken ct = default) =>
+        Store(aggregate, ct);
 
-    public void Update(T aggregate)
-    {
-        Store(aggregate);
-    }
+    public Task UpdateAsync(T aggregate, CancellationToken ct = default) =>
+        Store(aggregate, ct);
 
-    public void Delete(T aggregate)
-    {
-        Store(aggregate);
-    }
+    public Task DeleteAsync(T aggregate, CancellationToken ct = default) =>
+        Store(aggregate, ct);
 
-    public void AddSnapshot(ISnapshot snapshot)
-    {
+    public void RegisterSnapshot(ISnapshot snapshot) =>
         snapshots.Add(snapshot);
-    }
 
-    public bool Store<TStream>(TStream aggregate) where TStream : IAggregate
+    private async Task Store<TStream>(TStream aggregate, CancellationToken ct = default) where TStream : IAggregate
     {
-        var events = aggregate.DequeueUncommittedEvents();
-        var initialVersion = aggregate.Version - events.Count();
+        var events = aggregate.DequeueUncommittedEvents().ToArray();
+        var initialVersion = aggregate.Version - events.Length;
 
-        foreach (var @event in events)
-        {
-            eventStore.AppendEvent<TStream>(aggregate.Id, @event, initialVersion++);
-        }
+        await eventStore.AppendEventsAsync<TStream>(aggregate.Id, events, initialVersion, ct);
 
         foreach (var snapshot in snapshots)
         {
             snapshot.Handle(aggregate);
         }
-
-        return true;
     }
 }

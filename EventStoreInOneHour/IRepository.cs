@@ -2,13 +2,13 @@ namespace EventStoreInOneHour;
 
 public interface IRepository<T> where T : IAggregate
 {
-    T? Find(Guid id);
+    Task<T?> FindAsync(Guid id, CancellationToken ct = default);
 
-    void Add(T aggregate);
+    Task AddAsync(T aggregate, CancellationToken ct = default);
 
-    void Update(T aggregate);
+    Task UpdateAsync(T aggregate, CancellationToken ct = default);
 
-    void Delete(T aggregate);
+    Task DeleteAsync(T aggregate, CancellationToken ct = default);
 
-    void AddSnapshot(ISnapshot snapshot);
+    void RegisterSnapshot(ISnapshot snapshot);
 }

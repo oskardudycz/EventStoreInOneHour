@@ -6,13 +6,14 @@ public static class EventStoreExtensions
 {
     private const string Apply = "Apply";
 
-    public static T? AggregateStream<T>(
+    public static Task<T?> AggregateStreamAsync<T>(
         this IEventStore eventStore,
         Guid streamId,
         long? atStreamVersion = null,
-        DateTime? atTimestamp = null
+        DateTime? atTimestamp = null,
+        CancellationToken ct = default
     ) where T : notnull =>
-        eventStore.AggregateStream<T>(
+        eventStore.AggregateStreamAsync<T>(
             (aggregate, @event) =>
             {
                 aggregate.InvokeIfExists(Apply, @event);
@@ -20,34 +21,38 @@ public static class EventStoreExtensions
             },
             streamId,
             atStreamVersion,
-            atTimestamp
+            atTimestamp,
+            ct
         );
 
-    public static T? AggregateStream<T>(
+    public static Task<T?> AggregateStreamAsync<T>(
         this IEventStore eventStore,
         Func<T, object, T> evolve,
         Guid streamId,
         long? atStreamVersion = null,
-        DateTime? atTimestamp = null
+        DateTime? atTimestamp = null,
+        CancellationToken ct = default
     ) where T : notnull =>
-        eventStore.AggregateStream(
+        eventStore.AggregateStreamAsync(
             () => (T)Activator.CreateInstance(typeof(T), true)!,
             evolve,
             streamId,
             atStreamVersion,
-            atTimestamp
+            atTimestamp,
+            ct
         );
 
-    public static T? AggregateStream<T>(
+    public static async Task<T?> AggregateStreamAsync<T>(
         this IEventStore eventStore,
         Func<T> getDefault,
         Func<T, object, T> evolve,
         Guid streamId,
         long? atStreamVersion = null,
-        DateTime? atTimestamp = null
+        DateTime? atTimestamp = null,
+        CancellationToken ct = default
     ) where T : notnull
     {
-        var events = eventStore.GetEvents(streamId, atStreamVersion, atTimestamp);
+        var events = await eventStore.GetEventsAsync(streamId, atStreamVersion, atTimestamp, ct);
         var version = 0;
 
         T? aggregate = default;
