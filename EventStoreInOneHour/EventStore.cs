@@ -39,7 +39,7 @@ public class EventStore: IDisposable, IEventStore
         }
     }
 
-    public async Task AppendEventsAsync<TStream>(Guid streamId, object[] events, long? expectedVersion = null, CancellationToken ct = default)
+    public async Task AppendEventsAsync<TStream>(Guid streamId, IEnumerable<object> events, long? expectedVersion = null, CancellationToken ct = default)
         where TStream : notnull
     {
         if (databaseConnection.State == ConnectionState.Closed)
