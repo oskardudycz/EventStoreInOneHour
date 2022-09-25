@@ -67,11 +67,11 @@ public class Exercise08Snapshots
                  DO UPDATE SET Balance = @Balance, version = @Version");
 
         repository = new Repository<BankAccount>(eventStore);
-        repository.AddSnapshot(userSnapshot);
+        repository.RegisterSnapshot(userSnapshot);
     }
 
     [Fact]
-    public void AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
+    public async Task AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
     {
         var timeBeforeCreate = DateTime.UtcNow;
         var bankAccountId = Guid.NewGuid();
@@ -86,7 +86,7 @@ public class Exercise08Snapshots
             currencyISOCOde
         );
 
-        repository.Add(bankAccount);
+        await repository.AddAsync(bankAccount);
 
         var snapshot = databaseConnection.Get<BankAccount>(bankAccountId);
 
@@ -103,7 +103,7 @@ public class Exercise08Snapshots
 
         snapshot.RecordDeposit(depositAmount, cashierId);
 
-        repository.Update(snapshot);
+        await repository.UpdateAsync(snapshot);
 
         var snapshotAfterUpdate = databaseConnection.Get<BankAccount>(bankAccountId);
 
@@ -112,10 +112,8 @@ public class Exercise08Snapshots
         snapshotAfterUpdate.Version.Should().Be(2);
     }
 
-
-
     [Fact]
-    public void Snapshots_ShouldBeQueryable()
+    public async Task Snapshots_ShouldBeQueryable()
     {
         var firstMatchingBankAccount = BankAccount.Open(
             Guid.NewGuid(),
@@ -136,9 +134,9 @@ public class Exercise08Snapshots
             "EUR"
         );
 
-        repository.Add(firstMatchingBankAccount);
-        repository.Add(secondMatchingAccount);
-        repository.Add(thirdMatchingAccount);
+        await repository.AddAsync(firstMatchingBankAccount);
+        await repository.AddAsync(secondMatchingAccount);
+        await repository.AddAsync(thirdMatchingAccount);
 
 
         var bankAccounts = databaseConnection.Query<BankAccount>(

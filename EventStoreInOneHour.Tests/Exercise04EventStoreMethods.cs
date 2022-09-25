@@ -26,7 +26,7 @@ public class Exercise04EventStoreMethods
     private readonly EventStore eventStore;
 
     [Fact]
-    public void GetEvents_ShouldReturnAppendedEvents()
+    public async Task GetEvents_ShouldReturnAppendedEvents()
     {
         var now = DateTime.UtcNow;
 
@@ -49,11 +49,12 @@ public class Exercise04EventStoreMethods
         var atmId = Guid.NewGuid();
         var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, now);
 
-        eventStore.AppendEvent<BankAccount>(bankAccountId, bankAccountCreated);
-        eventStore.AppendEvent<BankAccount>(bankAccountId, depositRecorded);
-        eventStore.AppendEvent<BankAccount>(bankAccountId, cashWithdrawn);
+        await eventStore.AppendEventsAsync<BankAccount>(
+            bankAccountId,
+            new object[] { bankAccountCreated, depositRecorded, cashWithdrawn }
+        );
 
-        var events = eventStore.GetEvents(bankAccountId);
+        var events = await eventStore.GetEventsAsync(bankAccountId);
 
         events.Cast<object>().Should().HaveCount(3);
 
@@ -74,7 +75,7 @@ public class Exercise04EventStoreMethods
     }
 
     [Fact]
-    public void GetStreamState_ShouldReturnProperStreamInfo()
+    public async Task GetStreamState_ShouldReturnProperStreamInfo()
     {
         var bankAccountId = Guid.NewGuid();
         var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
@@ -88,7 +89,7 @@ public class Exercise04EventStoreMethods
             currencyISOCOde,
             DateTime.Now
         );
-        eventStore.AppendEvent<BankAccount>(bankAccountId, bankAccountCreated);
+        await eventStore.AppendEventsAsync<BankAccount>(bankAccountId, new object[] { bankAccountCreated });
 
         var streamState = eventStore.GetStreamState(bankAccountId);
 

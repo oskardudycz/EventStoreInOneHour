@@ -41,7 +41,7 @@ public class Exercise03CreateAppendEventFunction
     }
 
     [Fact]
-    public void AppendEventFunction_WhenStreamDoesNotExist_CreateNewStream_And_AppendNewEvent()
+    public async Task AppendEventFunction_WhenStreamDoesNotExist_CreateNewStream_And_AppendNewEvent()
     {
         var bankAccountId = Guid.NewGuid();
         var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
@@ -56,17 +56,15 @@ public class Exercise03CreateAppendEventFunction
             DateTime.Now
         );
 
-        var result = eventStore.AppendEvent<BankAccount>(bankAccountId, @event);
-
-        result.Should().BeTrue();
+        await eventStore.AppendEventsAsync<BankAccount>(bankAccountId, new object[] { @event });
 
         var wasStreamCreated = databaseConnection.QuerySingle<bool>(
-            "select exists (select 1 from streams where id = @streamId)", new { streamId = bankAccountId}
+            "select exists (select 1 from streams where id = @streamId)", new { streamId = bankAccountId }
         );
         wasStreamCreated.Should().BeTrue();
 
         var wasEventAppended = databaseConnection.QuerySingle<bool>(
-            "select exists (select 1 from events where stream_id = @streamId)", new {streamId = bankAccountId}
+            "select exists (select 1 from events where stream_id = @streamId)", new { streamId = bankAccountId }
         );
         wasEventAppended.Should().BeTrue();
     }

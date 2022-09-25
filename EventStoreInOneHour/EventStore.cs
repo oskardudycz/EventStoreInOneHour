@@ -30,19 +30,6 @@ public class EventStore: IDisposable, IEventStore
         projections.Add(projection);
     }
 
-    public bool Store<TStream>(TStream aggregate) where TStream : IAggregate
-    {
-        var events = aggregate.DequeueUncommittedEvents();
-        var initialVersion = aggregate.Version - events.Count();
-
-        foreach (var @event in events)
-        {
-            AppendEvent<TStream>(aggregate.Id, @event, initialVersion++);
-        }
-
-        return true;
-    }
-
     public void ApplyProjections(object @event)
     {
         foreach (var projection in projections.Where(
@@ -52,29 +39,41 @@ public class EventStore: IDisposable, IEventStore
         }
     }
 
-    public bool AppendEvent<TStream>(Guid streamId, object @event, long? expectedVersion = null)
+    public async Task AppendEventsAsync<TStream>(Guid streamId, object[] events, long? expectedVersion = null, CancellationToken ct = default)
         where TStream : notnull
     {
-        var wasUpdated = databaseConnection.QuerySingle<bool>(
-            "SELECT append_event(@Id, @Data::jsonb, @Type, @StreamId, @StreamType, @ExpectedVersion)",
-            new
-            {
-                Id = Guid.NewGuid(),
-                Data = JsonConvert.SerializeObject(@event),
-                Type = @event.GetType().AssemblyQualifiedName,
-                StreamId = streamId,
-                StreamType = typeof(TStream).AssemblyQualifiedName,
-                ExpectedVersion = expectedVersion
-            },
-            commandType: CommandType.Text
-        );
+        if (databaseConnection.State == ConnectionState.Closed)
+            await databaseConnection.OpenAsync(ct);
 
-        if (wasUpdated)
+        await using var transaction = await databaseConnection.BeginTransactionAsync(ct);
+
+        try
         {
-            ApplyProjections(@event);
-        }
+            foreach (var @event in events)
+            {
+                databaseConnection.QuerySingle<bool>(
+                    "SELECT append_event(@Id, @Data::jsonb, @Type, @StreamId, @StreamType, @ExpectedVersion)",
+                    new
+                    {
+                        Id = Guid.NewGuid(),
+                        Data = JsonConvert.SerializeObject(@event),
+                        Type = @event.GetType().AssemblyQualifiedName,
+                        StreamId = streamId,
+                        StreamType = typeof(TStream).AssemblyQualifiedName,
+                        ExpectedVersion = expectedVersion
+                    },
+                    commandType: CommandType.Text
+                );
+                expectedVersion++;
+                ApplyProjections(@event);
+            }
 
-        return wasUpdated;
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+        }
     }
 
     public StreamState? GetStreamState(Guid streamId)
@@ -95,7 +94,7 @@ public class EventStore: IDisposable, IEventStore
             .SingleOrDefault();
     }
 
-    public IEnumerable GetEvents(Guid streamId, long? atStreamVersion = null, DateTime? atTimestamp = null)
+    public async Task<IEnumerable> GetEventsAsync(Guid streamId, long? atStreamVersion = null, DateTime? atTimestamp = null, CancellationToken ct = default)
     {
         var atStreamCondition = atStreamVersion != null ? "AND version <= @atStreamVersion" : string.Empty;
         var atTimestampCondition = atTimestamp != null ? "AND created <= @atTimestamp" : string.Empty;
@@ -108,9 +107,10 @@ public class EventStore: IDisposable, IEventStore
                   {atTimestampCondition}
                   ORDER BY version";
 
-        return databaseConnection
-            .Query<dynamic>(getStreamSql, new { streamId, atStreamVersion, atTimestamp })
-            .Select(@event =>
+        var events = await databaseConnection
+            .QueryAsync<dynamic>(getStreamSql, new { streamId, atStreamVersion, atTimestamp });
+
+        return events.Select(@event =>
                 JsonConvert.DeserializeObject(
                     @event.data,
                     Type.GetType(@event.type)
