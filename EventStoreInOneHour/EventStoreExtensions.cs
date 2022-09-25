@@ -6,7 +6,7 @@ public static class EventStoreExtensions
 {
     private const string Apply = "Apply";
 
-    public static T AggregateStream<T>(
+    public static T? AggregateStream<T>(
         this IEventStore eventStore,
         Guid streamId,
         long? atStreamVersion = null,
@@ -23,7 +23,7 @@ public static class EventStoreExtensions
             atTimestamp
         );
 
-    public static T AggregateStream<T>(
+    public static T? AggregateStream<T>(
         this IEventStore eventStore,
         Func<T, object, T> evolve,
         Guid streamId,
@@ -38,7 +38,7 @@ public static class EventStoreExtensions
             atTimestamp
         );
 
-    public static T AggregateStream<T>(
+    public static T? AggregateStream<T>(
         this IEventStore eventStore,
         Func<T> getDefault,
         Func<T, object, T> evolve,
@@ -47,14 +47,13 @@ public static class EventStoreExtensions
         DateTime? atTimestamp = null
     ) where T : notnull
     {
-        var aggregate = getDefault();
-
         var events = eventStore.GetEvents(streamId, atStreamVersion, atTimestamp);
         var version = 0;
 
+        T? aggregate = default;
         foreach (var @event in events)
         {
-            aggregate = evolve(aggregate, @event);
+            aggregate = evolve(aggregate ?? getDefault(), @event);
             aggregate.SetIfExists(nameof(IAggregate.Version), ++version);
         }
 

@@ -1,3 +1,4 @@
+using EventStoreInOneHour.Tests.BankAccounts;
 using EventStoreInOneHour.Tests.Tools;
 using FluentAssertions;
 using Npgsql;
@@ -53,7 +54,8 @@ public class Exercise05StreamAggregation
 
         var bankAccount = eventStore.AggregateStream<BankAccount>(BankAccount.Evolve, bankAccountId);
 
-        bankAccount.Id.Should().Be(bankAccountId);
+        bankAccount.Should().NotBeNull();
+        bankAccount!.Id.Should().Be(bankAccountId);
         bankAccount.Version.Should().Be(3);
         bankAccount.AccountNumber.Should().Be(accountNumber);
         bankAccount.ClientId.Should().Be(clientId);

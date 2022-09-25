@@ -1,3 +1,4 @@
+using EventStoreInOneHour.Tests.BankAccounts;
 using EventStoreInOneHour.Tests.Tools;
 using FluentAssertions;
 using Npgsql;

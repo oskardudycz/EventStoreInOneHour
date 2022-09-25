@@ -10,7 +10,7 @@ public class Repository<T>: IRepository<T> where T : IAggregate
         this.eventStore = eventStore ?? throw new ArgumentNullException(nameof(eventStore));
     }
 
-    public T Find(Guid id)
+    public T? Find(Guid id)
     {
         return eventStore.AggregateStream<T>(id);
     }
