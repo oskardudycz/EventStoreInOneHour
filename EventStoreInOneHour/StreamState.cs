@@ -1,20 +1,17 @@
-using System;
+namespace EventStoreInOneHour;
 
-namespace EventStoreInOneHour
+public class StreamState
 {
-    public class StreamState
+    public Guid Id { get; }
+
+    public Type Type { get; }
+
+    public long Version { get; }
+
+    public StreamState(Guid id, Type type, long version)
     {
-        public Guid Id { get; }
-
-        public Type Type { get; }
-
-        public long Version { get; }
-
-        public StreamState(Guid id, Type type, long version)
-        {
-            Id = id;
-            Type = type;
-            Version = version;
-        }
+        Id = id;
+        Type = type;
+        Version = version;
     }
 }

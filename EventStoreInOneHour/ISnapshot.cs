@@ -1,10 +1,7 @@
-using System;
+namespace EventStoreInOneHour;
 
-namespace EventStoreInOneHour
+public interface ISnapshot
 {
-    public interface ISnapshot
-    {
-        Type Handles { get; }
-        void Handle(IAggregate aggregate);
-    }
+    Type Handles { get; }
+    void Handle(IAggregate aggregate);
 }

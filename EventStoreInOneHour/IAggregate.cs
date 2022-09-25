@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
+namespace EventStoreInOneHour;
 
-namespace EventStoreInOneHour
+public interface IAggregate
 {
-    public interface IAggregate
-    {
-        Guid Id { get; }
-        int Version { get; }
-        IEnumerable<object> DequeueUncommittedEvents();
-    }
+    Guid Id { get; }
+    int Version { get; }
+    IEnumerable<object> DequeueUncommittedEvents();
 }

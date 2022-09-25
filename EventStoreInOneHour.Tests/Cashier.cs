@@ -1,54 +1,51 @@
-using System;
+namespace EventStoreInOneHour.Tests;
 
-namespace EventStoreInOneHour.Tests
+public class CashierCreated
 {
-    public class CashierCreated
-    {
-        public Guid CashierId { get; }
-        public string Name { get; }
+    public Guid CashierId { get; }
+    public string Name { get; }
 
-        public CashierCreated(
-            Guid cashierId,
-            string name
-        )
-        {
-            CashierId = cashierId;
-            Name = name;
-        }
+    public CashierCreated(
+        Guid cashierId,
+        string name
+    )
+    {
+        CashierId = cashierId;
+        Name = name;
+    }
+}
+
+public class Cashier: Aggregate
+{
+    public string Name { get; private set; } = default!;
+
+    // for dapper
+    public Cashier()
+    {
     }
 
-    public class Cashier: Aggregate
+    private Cashier(
+        Guid cashierId,
+        string name
+    )
     {
-        public string Name { get; private set; }
+        var @event = new CashierCreated(cashierId, name);
 
-        // for dapper
-        public Cashier()
-        {
-        }
+        Enqueue(@event);
+        Apply(@event);
+    }
 
-        private Cashier(
-            Guid cashierId,
-            string name
-        )
-        {
-            var @event = new CashierCreated(cashierId, name);
+    public static Cashier Create(
+        Guid cashierId,
+        string name
+    )
+    {
+        return new Cashier(cashierId, name);
+    }
 
-            Enqueue(@event);
-            Apply(@event);
-        }
-
-        public static Cashier Create(
-            Guid cashierId,
-            string name
-        )
-        {
-            return new Cashier(cashierId, name);
-        }
-
-        public void Apply(CashierCreated @event)
-        {
-            Id = @event.CashierId;
-            Name = @event.Name;
-        }
+    public void Apply(CashierCreated @event)
+    {
+        Id = @event.CashierId;
+        Name = @event.Name;
     }
 }
