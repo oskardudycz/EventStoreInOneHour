@@ -12,13 +12,27 @@ public static class EventStoreExtensions
         long? atStreamVersion = null,
         DateTime? atTimestamp = null
     ) where T : notnull =>
-        eventStore.AggregateStream(
-            () => (T)Activator.CreateInstance(typeof(T), true)!,
+        eventStore.AggregateStream<T>(
             (aggregate, @event) =>
             {
                 aggregate.InvokeIfExists(Apply, @event);
                 return aggregate;
             },
+            streamId,
+            atStreamVersion,
+            atTimestamp
+        );
+
+    public static T AggregateStream<T>(
+        this IEventStore eventStore,
+        Func<T, object, T> evolve,
+        Guid streamId,
+        long? atStreamVersion = null,
+        DateTime? atTimestamp = null
+    ) where T : notnull =>
+        eventStore.AggregateStream(
+            () => (T)Activator.CreateInstance(typeof(T), true)!,
+            evolve,
             streamId,
             atStreamVersion,
             atTimestamp

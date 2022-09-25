@@ -51,7 +51,7 @@ public class Exercise05StreamAggregation
         eventStore.AppendEvent<BankAccount>(bankAccountId, depositRecorded);
         eventStore.AppendEvent<BankAccount>(bankAccountId, cashWithdrawn);
 
-        var bankAccount = eventStore.AggregateStream<BankAccount>(bankAccountId);
+        var bankAccount = eventStore.AggregateStream<BankAccount>(BankAccount.Evolve, bankAccountId);
 
         bankAccount.Id.Should().Be(bankAccountId);
         bankAccount.Version.Should().Be(3);

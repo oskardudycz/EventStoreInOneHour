@@ -87,6 +87,24 @@ public class BankAccount: Aggregate
         Apply(@event);
     }
 
+    public static BankAccount Evolve(BankAccount bankAccount, object @event)
+    {
+        switch (@event)
+        {
+            case BankAccountCreated bankAccountCreated:
+                bankAccount.Apply(bankAccountCreated);
+                break;
+            case DepositRecorded depositRecorded:
+                bankAccount.Apply(depositRecorded);
+                break;
+            case CashWithdrawnFromATM cashWithdrawnFromATM:
+                bankAccount.Apply(cashWithdrawnFromATM);
+                break;
+        }
+
+        return bankAccount;
+    }
+
     public void Apply(BankAccountCreated @event)
     {
         Id = @event.BankAccountId;
