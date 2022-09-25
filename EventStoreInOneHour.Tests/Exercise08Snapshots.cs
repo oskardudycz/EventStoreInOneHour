@@ -56,18 +56,17 @@ public class Exercise08Snapshots
         // Create Event Store
         eventStore = new EventStore(databaseConnection);
 
+        // Initialize Event Store
+        eventStore.Init();
+
         var userSnapshot = new SnapshotToTable<BankAccount>(
             databaseConnection,
             @"INSERT INTO bankaccounts (id, accountNumber, clientId, currencyISOCode, balance, createdAt, version) VALUES (@Id, @AccountNumber, @ClientId, @CurrencyISOCode, @Balance, @CreatedAt, @Version)
                  ON CONFLICT (id)
                  DO UPDATE SET Balance = @Balance, version = @Version");
 
-        eventStore.AddSnapshot(userSnapshot);
-
-        // Initialize Event Store
-        eventStore.Init();
-
         repository = new Repository<BankAccount>(eventStore);
+        repository.AddSnapshot(userSnapshot);
     }
 
     [Fact]

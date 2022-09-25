@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Data;
 using Dapper;
-using EventStoreInOneHour.Tools;
 using Newtonsoft.Json;
 using Npgsql;
 
@@ -11,10 +10,7 @@ public class EventStore: IDisposable, IEventStore
 {
     private readonly NpgsqlConnection databaseConnection;
 
-    private readonly IList<ISnapshot> snapshots = new List<ISnapshot>();
     private readonly IList<IProjection> projections = new List<IProjection>();
-
-    private const string Apply = "Apply";
 
     public EventStore(NpgsqlConnection databaseConnection)
     {
@@ -27,11 +23,6 @@ public class EventStore: IDisposable, IEventStore
         CreateStreamsTable();
         CreateEventsTable();
         CreateAppendEventFunction();
-    }
-
-    public void AddSnapshot(ISnapshot snapshot)
-    {
-        snapshots.Add(snapshot);
     }
 
     public void AddProjection(IProjection projection)
@@ -47,25 +38,24 @@ public class EventStore: IDisposable, IEventStore
         foreach (var @event in events)
         {
             AppendEvent<TStream>(aggregate.Id, @event, initialVersion++);
-
-            foreach (var projection in projections.Where(
-                         projection => projection.Handles.Contains(@event.GetType())))
-            {
-                projection.Handle(@event);
-            }
         }
 
-        snapshots
-            .FirstOrDefault(snapshot => snapshot.Handles == typeof(TStream))?
-            .Handle(aggregate);
-
         return true;
+    }
+
+    public void ApplyProjections(object @event)
+    {
+        foreach (var projection in projections.Where(
+                     projection => projection.Handles.Contains(@event.GetType())))
+        {
+            projection.Handle(@event);
+        }
     }
 
     public bool AppendEvent<TStream>(Guid streamId, object @event, long? expectedVersion = null)
         where TStream : notnull
     {
-        return databaseConnection.QuerySingle<bool>(
+        var wasUpdated = databaseConnection.QuerySingle<bool>(
             "SELECT append_event(@Id, @Data::jsonb, @Type, @StreamId, @StreamType, @ExpectedVersion)",
             new
             {
@@ -78,23 +68,13 @@ public class EventStore: IDisposable, IEventStore
             },
             commandType: CommandType.Text
         );
-    }
 
-    public T AggregateStream<T>(Guid streamId, long? atStreamVersion = null, DateTime? atTimestamp = null)
-        where T : notnull
-    {
-        var aggregate = (T)Activator.CreateInstance(typeof(T), true)!;
-
-        var events = GetEvents(streamId, atStreamVersion, atTimestamp);
-        var version = 0;
-
-        foreach (var @event in events)
+        if (wasUpdated)
         {
-            aggregate.InvokeIfExists(Apply, @event);
-            aggregate.SetIfExists(nameof(IAggregate.Version), ++version);
+            ApplyProjections(@event);
         }
 
-        return aggregate;
+        return wasUpdated;
     }
 
     public StreamState? GetStreamState(Guid streamId)
