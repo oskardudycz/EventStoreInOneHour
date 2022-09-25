@@ -11,16 +11,36 @@ public static class EventStoreExtensions
         Guid streamId,
         long? atStreamVersion = null,
         DateTime? atTimestamp = null
+    ) where T : notnull =>
+        eventStore.AggregateStream(
+            () => (T)Activator.CreateInstance(typeof(T), true)!,
+            (aggregate, @event) =>
+            {
+                aggregate.InvokeIfExists(Apply, @event);
+                return aggregate;
+            },
+            streamId,
+            atStreamVersion,
+            atTimestamp
+        );
+
+    public static T AggregateStream<T>(
+        this IEventStore eventStore,
+        Func<T> getDefault,
+        Func<T, object, T> evolve,
+        Guid streamId,
+        long? atStreamVersion = null,
+        DateTime? atTimestamp = null
     ) where T : notnull
     {
-        var aggregate = (T)Activator.CreateInstance(typeof(T), true)!;
+        var aggregate = getDefault();
 
         var events = eventStore.GetEvents(streamId, atStreamVersion, atTimestamp);
         var version = 0;
 
         foreach (var @event in events)
         {
-            aggregate.InvokeIfExists(Apply, @event);
+            aggregate = evolve(aggregate, @event);
             aggregate.SetIfExists(nameof(IAggregate.Version), ++version);
         }
 
