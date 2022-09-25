@@ -20,13 +20,10 @@ public class Exercise07AggregateAndRepository
 
         // Initialize Event Store
         eventStore.Init();
-
-        repository = new Repository<BankAccount>(eventStore);
     }
 
     private readonly NpgsqlConnection databaseConnection;
     private readonly EventStore eventStore;
-    private readonly IRepository<BankAccount> repository;
 
     [Fact]
     public async Task Repository_FullFlow_ShouldSucceed()
@@ -37,16 +34,17 @@ public class Exercise07AggregateAndRepository
         var clientId = Guid.NewGuid();
         var currencyISOCOde = "PLN";
 
-        var bankAccount = BankAccount.Open(
+        await eventStore.Handle(
             bankAccountId,
-            accountNumber,
-            clientId,
-            currencyISOCOde
+            new OpenBankAccount(
+                bankAccountId,
+                accountNumber,
+                clientId,
+                currencyISOCOde
+            )
         );
 
-        await repository.AddAsync(bankAccount);
-
-        var bankAccountFromRepository = await repository.FindAsync(bankAccountId);
+        var bankAccountFromRepository = await eventStore.GetBankAccount(bankAccountId);
 
         bankAccountFromRepository.Should().NotBeNull();
         bankAccountFromRepository!.Id.Should().Be(bankAccountId);
@@ -60,15 +58,19 @@ public class Exercise07AggregateAndRepository
         var cashierId = Guid.NewGuid();
         var depositAmount = 100;
 
-        bankAccountFromRepository.RecordDeposit(depositAmount, cashierId);
+        await eventStore.Handle(
+            bankAccountId,
+            new RecordDeposit(
+                depositAmount,
+                cashierId
+            )
+        );
 
-        await repository.UpdateAsync(bankAccountFromRepository);
-
-        var bankAccountAfterDeposit = await repository.FindAsync(bankAccountId);
+        var bankAccountAfterDeposit = await eventStore.GetBankAccount(bankAccountId);
 
         bankAccountAfterDeposit.Should().NotBeNull();
         bankAccountAfterDeposit!.Id.Should().Be(bankAccountId);
         bankAccountAfterDeposit.Balance.Should().Be(depositAmount);
-        bankAccountFromRepository.Version.Should().Be(2);
+        bankAccountAfterDeposit.Version.Should().Be(2);
     }
 }

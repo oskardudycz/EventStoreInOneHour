@@ -3,21 +3,21 @@ using Npgsql;
 
 namespace EventStoreInOneHour;
 
-public class SnapshotToTable<T>: ISnapshot
+public class SnapshotToTable: IProjection
 {
     private readonly NpgsqlConnection databaseConnection;
     private readonly string upsertSql;
 
-    public SnapshotToTable(NpgsqlConnection databaseConnection, string upsertSql)
+    public SnapshotToTable(NpgsqlConnection databaseConnection, Type[] handles, string upsertSql)
     {
         this.databaseConnection = databaseConnection;
+        Handles = handles;
         this.upsertSql = upsertSql;
     }
 
-    public Type Handles => typeof(T);
-
-    public void Handle(IAggregate aggregate)
+    public Type[] Handles { get; }
+    public void Handle(object @event)
     {
-        databaseConnection.Execute(upsertSql, aggregate);
+        databaseConnection.Execute(upsertSql,  @event);
     }
 }

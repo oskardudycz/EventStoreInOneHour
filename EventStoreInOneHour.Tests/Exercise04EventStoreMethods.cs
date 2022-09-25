@@ -34,20 +34,22 @@ public class Exercise04EventStoreMethods
         var accountNumber = "PL61 1090 1014 0000 0712 1981 2874";
         var clientId = Guid.NewGuid();
         var currencyISOCOde = "PLN";
+        var version = 1;
 
-        var bankAccountCreated = new BankAccountCreated(
+        var bankAccountCreated = new BankAccountOpened(
             bankAccountId,
             accountNumber,
             clientId,
             currencyISOCOde,
-            now
+            now,
+            version
         );
 
         var cashierId = Guid.NewGuid();
-        var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, now);
+        var depositRecorded = new DepositRecorded(bankAccountId, 100, cashierId, now, ++version);
 
         var atmId = Guid.NewGuid();
-        var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, now);
+        var cashWithdrawn = new CashWithdrawnFromATM(bankAccountId, 50, atmId, now, ++version);
 
         await eventStore.AppendEventsAsync<BankAccount>(
             bankAccountId,
@@ -56,19 +58,19 @@ public class Exercise04EventStoreMethods
 
         var events = await eventStore.GetEventsAsync(bankAccountId);
 
-        events.Cast<object>().Should().HaveCount(3);
+        events.Should().HaveCount(3);
 
-        events.OfType<BankAccountCreated>().Should().Contain(
+        events.OfType<BankAccountOpened>().Should().Contain(
             e => e.BankAccountId == bankAccountId && e.AccountNumber == accountNumber
                                                   && e.ClientId == clientId && e.CurrencyISOCode == currencyISOCOde
                                                   && e.CreatedAt == now);
 
-        events.OfType<BankAccountCreated>().Should().Contain(
+        events.OfType<BankAccountOpened>().Should().Contain(
             e => e.BankAccountId == bankAccountId && e.AccountNumber == accountNumber
                                                   && e.ClientId == clientId && e.CurrencyISOCode == currencyISOCOde
                                                   && e.CreatedAt == now);
 
-        events.OfType<BankAccountCreated>().Should().Contain(
+        events.OfType<BankAccountOpened>().Should().Contain(
             e => e.BankAccountId == bankAccountId && e.AccountNumber == accountNumber
                                                   && e.ClientId == clientId && e.CurrencyISOCode == currencyISOCOde
                                                   && e.CreatedAt == now);
@@ -82,12 +84,13 @@ public class Exercise04EventStoreMethods
         var clientId = Guid.NewGuid();
         var currencyISOCOde = "PLN";
 
-        var bankAccountCreated = new BankAccountCreated(
+        var bankAccountCreated = new BankAccountOpened(
             bankAccountId,
             accountNumber,
             clientId,
             currencyISOCOde,
-            DateTime.Now
+            DateTime.Now,
+            1
         );
         await eventStore.AppendEventsAsync<BankAccount>(bankAccountId, new object[] { bankAccountCreated });
 
