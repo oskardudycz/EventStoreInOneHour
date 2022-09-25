@@ -2,7 +2,7 @@ namespace EventStoreInOneHour;
 
 public interface IRepository<T> where T : IAggregate
 {
-    T Find(Guid id);
+    T? Find(Guid id);
 
     void Add(T aggregate);
 

@@ -1,3 +1,4 @@
+using EventStoreInOneHour.Tests.BankAccounts;
 using EventStoreInOneHour.Tests.Tools;
 using FluentAssertions;
 using Npgsql;
@@ -53,21 +54,24 @@ public class Exercise06TimeTravelling
 
         var aggregateAtVersion1 = eventStore.AggregateStream<BankAccount>(BankAccount.Evolve, bankAccountId, 1);
 
-        aggregateAtVersion1.Id.Should().Be(bankAccountId);
+        aggregateAtVersion1.Should().NotBeNull();
+        aggregateAtVersion1!.Id.Should().Be(bankAccountId);
         aggregateAtVersion1.Balance.Should().Be(0);
         aggregateAtVersion1.Version.Should().Be(1);
 
 
         var aggregateAtVersion2 = eventStore.AggregateStream<BankAccount>(BankAccount.Evolve, bankAccountId, 2);
 
-        aggregateAtVersion2.Id.Should().Be(bankAccountId);
+        aggregateAtVersion2.Should().NotBeNull();
+        aggregateAtVersion2!.Id.Should().Be(bankAccountId);
         aggregateAtVersion2.Balance.Should().Be(depositRecorded.Amount);
         aggregateAtVersion2.Version.Should().Be(2);
 
 
         var aggregateAtVersion3 = eventStore.AggregateStream<BankAccount>(BankAccount.Evolve, bankAccountId, 3);
 
-        aggregateAtVersion3.Id.Should().Be(bankAccountId);
+        aggregateAtVersion3.Should().NotBeNull();
+        aggregateAtVersion3!.Id.Should().Be(bankAccountId);
         aggregateAtVersion3.Balance.Should().Be(depositRecorded.Amount - cashWithdrawn.Amount);
         aggregateAtVersion3.Version.Should().Be(3);
     }

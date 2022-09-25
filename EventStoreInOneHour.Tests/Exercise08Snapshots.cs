@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Dapper;
 using Dapper.Contrib.Extensions;
+using EventStoreInOneHour.Tests.BankAccounts;
 using EventStoreInOneHour.Tests.Tools;
 using FluentAssertions;
 using Npgsql;

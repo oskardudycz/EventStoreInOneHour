@@ -1,3 +1,4 @@
+using EventStoreInOneHour.Tests.BankAccounts;
 using EventStoreInOneHour.Tests.Tools;
 using FluentAssertions;
 using Npgsql;
@@ -47,7 +48,8 @@ public class Exercise07AggregateAndRepository
 
         var bankAccountFromRepository = repository.Find(bankAccountId);
 
-        bankAccountFromRepository.Id.Should().Be(bankAccountId);
+        bankAccountFromRepository.Should().NotBeNull();
+        bankAccountFromRepository!.Id.Should().Be(bankAccountId);
         bankAccountFromRepository.Version.Should().Be(1);
         bankAccountFromRepository.AccountNumber.Should().Be(accountNumber);
         bankAccountFromRepository.ClientId.Should().Be(clientId);
@@ -64,7 +66,8 @@ public class Exercise07AggregateAndRepository
 
         var bankAccountAfterDeposit = repository.Find(bankAccountId);
 
-        bankAccountAfterDeposit.Id.Should().Be(bankAccountId);
+        bankAccountAfterDeposit.Should().NotBeNull();
+        bankAccountAfterDeposit!.Id.Should().Be(bankAccountId);
         bankAccountAfterDeposit.Balance.Should().Be(depositAmount);
         bankAccountFromRepository.Version.Should().Be(2);
     }
