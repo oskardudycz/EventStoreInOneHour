@@ -39,13 +39,8 @@ public enum BankAccountStatus
 public record BankAccount(
     Guid Id,
     BankAccountStatus Status,
-    string AccountNumber,
-    Guid ClientId,
-    string CurrencyISOCode,
     decimal Balance,
-    DateTime CreatedAt,
-    long Version = 0,
-    DateTime? ClosedAt = null
+    long Version = 0
 )
 {
     public static BankAccount Evolve(BankAccount bankAccount, object @event)
@@ -68,11 +63,7 @@ public record BankAccount(
         new BankAccount(
             @event.BankAccountId,
             BankAccountStatus.Opened,
-            @event.AccountNumber,
-            @event.ClientId,
-            @event.CurrencyISOCode,
             0,
-            @event.CreatedAt,
             @event.Version
         );
 
@@ -94,7 +85,6 @@ public record BankAccount(
         this with
         {
             Status = BankAccountStatus.Closed,
-            ClosedAt = @event.ClosedAt,
             Version = @event.Version
         };
 }

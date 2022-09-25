@@ -1,24 +1,64 @@
+using Dapper;
+using Dapper.Contrib.Extensions;
+using EventStoreInOneHour.Tools;
+using Npgsql;
+
 namespace EventStoreInOneHour;
 
 public interface IProjection
 {
+    void Init();
     Type[] Handles { get; }
-    void Handle(object @event);
+    Task Handle(object @event, CancellationToken ct);
 }
 
-public abstract class Projection : IProjection
+public abstract class Projection: IProjection
 {
-    private readonly Dictionary<Type, Action<object>> handlers = new Dictionary<Type, Action<object>>();
+    private readonly Dictionary<Type, Func<object, CancellationToken, Task>> handlers = new();
+
+    public virtual void Init() { }
 
     public Type[] Handles => handlers.Keys.ToArray();
 
-    protected void Projects<TEvent>(Action<TEvent> action)
+    protected void Projects<TEvent>(Func<TEvent, CancellationToken, Task> action) =>
+        handlers.Add(
+            typeof(TEvent),
+            (@event, ct) => action((TEvent)@event, ct)
+        );
+
+    public Task Handle(object @event, CancellationToken ct) =>
+        handlers[@event.GetType()](@event, ct);
+}
+
+public abstract class FlatTableProjection<TEntity>: Projection where TEntity : class
+{
+    private readonly NpgsqlConnection dbConnection;
+    protected abstract string CreateTableStatement { get; }
+
+    protected FlatTableProjection(
+        NpgsqlConnection dbConnection
+    )
     {
-        handlers.Add(typeof(TEvent), @event => action((TEvent) @event));
+        this.dbConnection = dbConnection;
     }
 
-    public void Handle(object @event)
+    public override void Init() =>
+        dbConnection.Execute(CreateTableStatement);
+
+    protected void Projects<TEvent>(
+        Func<TEvent, Guid> getId,
+        Func<TEntity, TEvent, TEntity> handle
+    )
     {
-        handlers[@event.GetType()](@event);
+        Projects<TEvent>(async (@event, _) =>
+        {
+            var entity = await dbConnection.GetAsync<TEntity?>(getId(@event));
+            var updatedEntity = handle(entity ?? ObjectFactory<TEntity>.GetEmpty(), @event);
+
+            if (entity == null)
+                await dbConnection.InsertAsync(updatedEntity);
+            else
+                await dbConnection.UpdateAsync(updatedEntity);
+        });
     }
 }

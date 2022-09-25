@@ -8,7 +8,7 @@ namespace EventStoreInOneHour.Tests;
 
 public class Exercise06TimeTravelling
 {
-    private readonly NpgsqlConnection databaseConnection;
+    private readonly NpgsqlConnection dbConnection;
     private readonly EventStore eventStore;
 
     /// <summary>
@@ -16,10 +16,10 @@ public class Exercise06TimeTravelling
     /// </summary>
     public Exercise06TimeTravelling()
     {
-        databaseConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
+        dbConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
 
         // Create Event Store
-        eventStore = new EventStore(databaseConnection);
+        eventStore = new EventStore(dbConnection);
 
         // Initialize Event Store
         eventStore.Init();

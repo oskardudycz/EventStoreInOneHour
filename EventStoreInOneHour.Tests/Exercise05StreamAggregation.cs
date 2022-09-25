@@ -8,7 +8,7 @@ namespace EventStoreInOneHour.Tests;
 
 public class Exercise05StreamAggregation
 {
-    private readonly NpgsqlConnection databaseConnection;
+    private readonly NpgsqlConnection dbConnection;
     private readonly EventStore eventStore;
 
     /// <summary>
@@ -16,10 +16,10 @@ public class Exercise05StreamAggregation
     /// </summary>
     public Exercise05StreamAggregation()
     {
-        databaseConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
+        dbConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
 
         // Create Event Store
-        eventStore = new EventStore(databaseConnection);
+        eventStore = new EventStore(dbConnection);
 
         // Initialize Event Store
         eventStore.Init();
@@ -59,9 +59,6 @@ public class Exercise05StreamAggregation
 
         bankAccount.Id.Should().Be(bankAccountId);
         bankAccount.Version.Should().Be(3);
-        bankAccount.AccountNumber.Should().Be(accountNumber);
-        bankAccount.ClientId.Should().Be(clientId);
-        bankAccount.CurrencyISOCode.Should().Be(currencyISOCOde);
-        bankAccount.CreatedAt.Should().Be(createdAt);
+        bankAccount.Balance.Should().Be(50);
     }
 }

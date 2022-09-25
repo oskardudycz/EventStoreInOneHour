@@ -13,16 +13,16 @@ public class Exercise07AggregateAndRepository
     /// </summary>
     public Exercise07AggregateAndRepository()
     {
-        databaseConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
+        dbConnection = PostgresDbConnectionProvider.GetFreshDbConnection();
 
         // Create Event Store
-        eventStore = new EventStore(databaseConnection);
+        eventStore = new EventStore(dbConnection);
 
         // Initialize Event Store
         eventStore.Init();
     }
 
-    private readonly NpgsqlConnection databaseConnection;
+    private readonly NpgsqlConnection dbConnection;
     private readonly EventStore eventStore;
 
     [Fact]
@@ -49,10 +49,6 @@ public class Exercise07AggregateAndRepository
         bankAccountFromRepository.Should().NotBeNull();
         bankAccountFromRepository!.Id.Should().Be(bankAccountId);
         bankAccountFromRepository.Version.Should().Be(1);
-        bankAccountFromRepository.AccountNumber.Should().Be(accountNumber);
-        bankAccountFromRepository.ClientId.Should().Be(clientId);
-        bankAccountFromRepository.CurrencyISOCode.Should().Be(currencyISOCOde);
-        bankAccountFromRepository.CreatedAt.Should().BeAfter(timeBeforeCreate);
         bankAccountFromRepository.Balance.Should().Be(0);
 
         var cashierId = Guid.NewGuid();
