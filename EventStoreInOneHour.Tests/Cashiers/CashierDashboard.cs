@@ -32,11 +32,11 @@ public class CashierDashboardProjection: Projection
     {
         this.dbConnection = dbConnection;
 
-        Projects<CashierCreated>(Apply);
+        Projects<CashierEmployed>(Apply);
         Projects<DepositRecorded>(Apply);
     }
 
-    private Task Apply(CashierCreated @event, CancellationToken ct) =>
+    private Task Apply(CashierEmployed @event, CancellationToken ct) =>
         dbConnection.ExecuteAsync(
             @"INSERT INTO CashierDashboards (Id, CashierName, RecordedDepositsCount, TotalBalance)
                     VALUES (@CashierId, @Name, 0, 0)",

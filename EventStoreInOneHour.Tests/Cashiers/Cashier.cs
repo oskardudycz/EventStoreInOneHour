@@ -1,6 +1,6 @@
 namespace EventStoreInOneHour.Tests.Cashiers;
 
-public record CashierCreated(
+public record CashierEmployed(
     Guid CashierId,
     string Name
 );
@@ -14,13 +14,13 @@ public record Cashier(
     {
         return @event switch
         {
-            CashierCreated cashierCreated =>
+            CashierEmployed cashierCreated =>
                 Create(cashierCreated),
             _ => cashier
         };
     }
 
-    public static Cashier Create(CashierCreated @event) =>
+    public static Cashier Create(CashierEmployed @event) =>
         new Cashier(
             @event.CashierId,
             @event.Name

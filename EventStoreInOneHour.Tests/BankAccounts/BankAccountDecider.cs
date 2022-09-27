@@ -21,7 +21,7 @@ public record CloseBankAccount(
     string Reason
 );
 
-public class BankAccountDecider
+public static class BankAccountDecider
 {
     public static object Handle(object command, BankAccount bankAccount) =>
         command switch
@@ -61,7 +61,7 @@ public class BankAccountDecider
         return new DepositRecorded(account.Id, command.Amount, command.CashierId, DateTime.UtcNow, account.Version + 1);
     }
 
-    public CashWithdrawnFromATM Handle(
+    public static CashWithdrawnFromATM Handle(
         WithdrawnCashFromATM command,
         BankAccount account
     )
@@ -75,7 +75,7 @@ public class BankAccountDecider
         return new CashWithdrawnFromATM(account.Id, command.Amount, command.AtmId, DateTime.UtcNow, account.Version + 1);
     }
 
-    public BankAccountClosed Handle(
+    public static  BankAccountClosed Handle(
         CloseBankAccount command,
         BankAccount account
     )

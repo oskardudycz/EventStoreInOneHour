@@ -34,8 +34,8 @@ public class Exercise09Projections
     [Fact]
     public async Task AddingAndUpdatingAggregate_ShouldCreateAndUpdateSnapshotAccordingly()
     {
-        var cashier1 = new CashierCreated(Guid.NewGuid(), "John Doe");
-        var cashier2 = new CashierCreated(Guid.NewGuid(), "Emily Rose");
+        var cashier1 = new CashierEmployed(Guid.NewGuid(), "John Doe");
+        var cashier2 = new CashierEmployed(Guid.NewGuid(), "Emily Rose");
         await eventStore.AppendEventsAsync<Cashier>(cashier1.CashierId, new[] { cashier1 });
         await eventStore.AppendEventsAsync<Cashier>(cashier2.CashierId, new[] { cashier2 });
 
