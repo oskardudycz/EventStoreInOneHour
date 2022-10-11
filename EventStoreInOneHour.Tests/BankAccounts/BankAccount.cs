@@ -25,10 +25,12 @@ public record CashWithdrawnFromATM(
     long Version
 );
 
-public record BankAccountClosed(Guid BankAccountId,
+public record BankAccountClosed(
+    Guid BankAccountId,
     string commandReason,
     DateTime ClosedAt,
-    long Version);
+    long Version
+);
 
 public enum BankAccountStatus
 {
@@ -68,23 +70,11 @@ public record BankAccount(
         );
 
     private BankAccount Apply(DepositRecorded @event) =>
-        this with
-        {
-            Balance = Balance + @event.Amount,
-            Version = @event.Version
-        };
+        this with { Balance = Balance + @event.Amount, Version = @event.Version };
 
     private BankAccount Apply(CashWithdrawnFromATM @event) =>
-        this with
-        {
-            Balance = Balance - @event.Amount,
-            Version = @event.Version,
-        };
+        this with { Balance = Balance - @event.Amount, Version = @event.Version, };
 
     private BankAccount Apply(BankAccountClosed @event) =>
-        this with
-        {
-            Status = BankAccountStatus.Closed,
-            Version = @event.Version
-        };
+        this with { Status = BankAccountStatus.Closed, Version = @event.Version };
 }
